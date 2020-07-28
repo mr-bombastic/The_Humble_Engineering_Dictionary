@@ -95,8 +95,11 @@ search_units = IntVar(value=1)
 item_type_to_add_or_edit = StringVar()  # this is for adding/editing items. Let it be
 
 # used to alert the user of their actions and asks them if they want to continue or not
-def alert_user(display_string):
-    return messagebox.askyesno(title="Warning", message=str(display_string))
+def alert_user(display_string, get_input):
+    if get_input:
+        return messagebox.askyesno(title="Warning", message=str(display_string))
+    else:
+        messagebox.showinfo(title="Warning", message=str(display_string))
 
 
 # print every saved item that is selected in the checkboxes
@@ -148,8 +151,6 @@ def search():
             print_results()
         else:  # if there are not results let the user know there was nothing found
             Label(frm_results_inner, text="No results fit your search criteria.\nPlease try different criteria.").grid()
-
-    # save_items(search_results)
 
 
 # will use the given text to search through the search_results list and will weed out anything that doesn't match
@@ -229,6 +230,16 @@ def search_in_list(search_text, list_to_search):
 
 # destroys all previous search results to allow new ones to be printed. also deletes stored widgets
 def destroy_results():
+    # reset selected item to nothing
+    global selected_item
+    selected_item = ""
+
+    btn_delete_item.configure(state="disabled")  # disable delete btn as it won't work correctly with nothing selected
+
+    # destroys anything that was in the display_info frame before
+    for widget in frm_info_inner.winfo_children():
+        widget.destroy()
+
     # destroys all widgets in frame
     for widget in frm_results_inner.winfo_children():
         widget.destroy()
@@ -375,12 +386,13 @@ def print_results():
 
 # will display a selected item's info in the display area
 def display_info(r):
-    # destroys anything that was in the frame before
+    # destroys anything that was in the display_info frame before
     for widget in frm_info_inner.winfo_children():
         widget.destroy()
 
-    global selected_item
+    btn_delete_item.configure(state="active")   # activate the delete button as an item would have been selected
 
+    global selected_item
     selected_item = search_results[r]  # get the search_result from the corresponding row
 
     # Name of the item
@@ -682,7 +694,7 @@ def string_to_item_conversion_logic(line, item_type):
             # will combine everything together into a method item and add it to the list
             item = Method(split_line[0], split_line[1], list_of_steps)
         elif item_type == "Logic":  # when displaying logic info
-            item = Logic(split_line[0], split_line[1], "image info goes here")
+            item = Logic(split_line[0], split_line[1], split_line[2])
 
     return item  # return the item
 
@@ -703,14 +715,13 @@ def get_item_file_directory(item):
     elif isinstance(item, Logic):  # when displaying logic info
         file_directory = "Dictionary/logic.txt"
     else:
-        file_directory = "Dictionary/lost_items.txt"
+        file_directory = "Dictionary/lost_or_deleted_items.txt"
     return file_directory
 
 
 # will save item(s) into respective files within the dictionary directory
 def save_items(items):
     # this for loop is just in case an array is given. Functionality that might be provided in the future
-
     try:
         for i in items:
             file = open(str(get_item_file_directory(i)), 'a')  # open the corresponding file
@@ -753,7 +764,8 @@ def file_existence_filter(target_file):
             file.write("_=^=_& name & description & image")
         elif target_file == "Dictionary/methods.txt":  # when writing info for method
             file.write("_=^=_& name & description & steps listed as various items")
-
+        else:
+            file.write("_=^=_& Lost items are found here")
         file.close()  # close the file
 
 
@@ -842,13 +854,13 @@ def add_edit_item_window(to_edit):
                           command=lambda e: add_edit_item_option_display(e, frm_add_edit_inner, False))
     opm_type.grid(column=0, columnspan=2, row=0, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    Button(frm_add_edit_inner, text="Submit Item", command=lambda: item_submit(frm_add_edit_inner, to_edit)) \
+    Button(frm_add_edit_inner, text="Submit Item", command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win)) \
         .grid(column=2, row=0, sticky="n, s, e, w")
 
     # will set the initial value of the option menu to the correct item type
     if to_edit:
         small_win.title("Edit")
-
+        opm_type.configure(state="disabled")
         it = get_item_type(selected_item)
 
         if it == "Variable":
@@ -1115,10 +1127,9 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
 
 
 # will add or edit the item the user has given
-def item_submit(container_widget, to_edit):
+def item_submit(container_widget, to_edit, top_level_window):
     list_of_widgets = container_widget.winfo_children()
-    item_type_item_to_edit = get_item_type(selected_item)
-    time_type_selected = item_type_to_add_or_edit.get()
+    item_type_selected = item_type_to_add_or_edit.get()
 
     item_to_save = ""
     list_of_txt_box_text = []
@@ -1128,23 +1139,22 @@ def item_submit(container_widget, to_edit):
         if item.winfo_class() == "Entry":
             list_of_txt_box_text.append(item.get())
 
+
     # will start the save logic corresponding to what the user wants to save
-    if time_type_selected == "Logic":
+    if item_type_selected == "Logic":
+        list_of_txt_box_text.append("")     # since image stuff hasn't been implemented
         item_to_save = item_submit_log_var_const(list_of_txt_box_text)
 
-    elif time_type_selected == "Variable":
+    elif item_type_selected == "Variable":
         item_to_save = item_submit_log_var_const(list_of_txt_box_text)
 
-    elif time_type_selected == "Constant":
+    elif item_type_selected == "Constant":
         item_to_save = item_submit_log_var_const(list_of_txt_box_text)
 
-    elif time_type_selected == "Constant":
-        item_to_save = item_submit_log_var_const(list_of_txt_box_text)
-
-    elif time_type_selected == "Equation":
+    elif item_type_selected == "Equation":
         item_to_save = item_submit_equ(list_of_txt_box_text, list_of_widgets[-1].winfo_children())
 
-    elif time_type_selected == "Method":
+    elif item_type_selected == "Method":
         last_child = LabelFrame()
         list_of_steps = []
         list_of_frames = []
@@ -1190,21 +1200,40 @@ def item_submit(container_widget, to_edit):
 
         item_to_save = Method(list_of_txt_box_text[0], list_of_txt_box_text[1], list_of_steps)
 
-    save_items(item_to_save)
 
-    # # if the user wants the edit an item they can change the type of item they want to edit
-    # if to_edit and item_type_item_to_edit == time_type_selected:
-    #     pass
-    #
-    # # if they are adding a new item
-    # else:
-    #     save_items(item_to_save)
+    is_there_blank_space = False
+
+    # will look out for blank spaces. if there are any then it will save that
+    for text in item_to_string(item_to_save).split('&'):
+        if text == '':
+            is_there_blank_space = True
+
+    # checks to see if there are blanks
+    if not is_there_blank_space:
+
+        # checks to make sure there isn't a repeated item
+        if not check_for_repeats(item_to_save):
+
+            # if the user wants to edit an item they can change the type of item they want to edit
+            if to_edit:
+                move_item_to_trash(selected_item)
+
+            save_items(item_to_save)
+            top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
+
+        else:
+            alert_user("There is an item already in the dictionary that matches what you just entered.\n"
+                       "This repeated item will not be added to the dictionary.", False)
+
+    else:
+        alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
+                   False)
 
 
 # will return a logic, variable, or constant depending on the length of list given
 def item_submit_log_var_const(text_list):
     if len(text_list) < 4:
-        return Logic(text_list[0], text_list[1], "image not done")
+        return Logic(text_list[0], text_list[1], text_list[2])
 
     elif len(text_list) == 4:
         return Variable(text_list[0], text_list[2], 0, text_list[3], text_list[1])
@@ -1241,10 +1270,60 @@ def item_submit_equ(outer_text_list, equ_frame_children):
     return Equation(outer_text_list[0], outer_text_list[1], outer_text_list[2], list_of_variables)
 
 
-# will delete the highlighted item from the database
-def item_delete():
-    if alert_user("Do you wish to delete the selected item?"):
-        item_to_string(selected_item)
+# asks the user if they do wish to delete their selected item before doing so
+def item_delete_ask_user():
+    if alert_user("Do you wish to delete the selected item?", True):
+        move_item_to_trash()
+
+
+# used to move any item to the trash document
+def move_item_to_trash(item):
+    # save necessary info about selected_item
+    selected_item_save_location = get_item_file_directory(item)
+    selected_item_file_lines = get_file_lines(selected_item_save_location)
+    selected_item_as_string = item_to_string(item)
+
+    # open the old file location in write mode deleting everything from it
+    start_file = open(selected_item_save_location, 'w')
+
+    # look at each line to determine if there is a match
+    for line in selected_item_file_lines:
+        if line.strip("\n") != selected_item_as_string.strip("\n"):     # when there isn't a match write the line
+            start_file.write(line)
+
+    start_file.close()    # close the file
+
+    # check if the lost/deleted file exists
+    file_existence_filter("Dictionary/lost_or_deleted_items.txt")
+
+    # write the selected_item into the lost/deleted file
+    end_file = open("Dictionary/lost_or_deleted_items.txt", 'a')  # open file
+    end_file.write(selected_item_as_string)
+    end_file.close()  # close the file
+
+
+# looks to see if there is a repeat of the given item. (True = Repeat, False = NO repeat)
+def check_for_repeats(item):
+    file_existence_filter(get_item_file_directory(item))
+
+    is_there_a_repeat = False
+
+    # save necessary info about selected_item
+    save_location = get_item_file_directory(item)
+    save_file_lines = get_file_lines(save_location)
+    item_as_string = item_to_string(item)
+
+    # open the old file location in write mode deleting everything from it
+    file = open(save_location, 'r')
+
+    # look at each line to determine if there is a match
+    for line in save_file_lines:
+        if line.strip("\n") == item_as_string.strip("\n"):  # when the line matches the item
+            is_there_a_repeat = True
+
+    file.close()  # close the file
+
+    return is_there_a_repeat
 
 
 # ======================================================================================================================
@@ -1258,13 +1337,14 @@ lab_title = Label(window, text="Dictionary of the Humble First Class Engineer", 
 lab_title.grid(column=0, columnspan=2, row=0, padx=spacing_out_x, pady=spacing_out_y,
                ipadx=spacing_out_x / 2, ipady=spacing_out_y / 2)
 
+
 # ---------------------------left side frame stuff---------------------------
 frm_left = Frame(window, bg=color_dark)
 frm_left.grid(column=0, row=1, sticky="n, s, e, w", padx=spacing_out_x, pady=spacing_out_y)
 frm_left.grid_rowconfigure(2, weight=1)
 
+
 # ---------------------------area for check boxes of what to include in search---------------------------
-# the frame for the accompanying stuff to go in
 frm_checkbox_holder = LabelFrame(frm_left, text="What to include in the search?",
                                  highlightthickness=1, highlightbackground=accent_light)
 frm_checkbox_holder.grid(column=1, row=0, sticky="n, s, e, w")
@@ -1307,7 +1387,6 @@ Checkbutton(frm_places_checkboxs, text="Units", variable=search_units) \
 
 # button to show everything from the selected item types
 btn_search = Button(frm_checkbox_holder, text="Show everything from selected item types.", command=print_all)
-# , groove, raised, ridge, , sunken
 
 btn_search.grid(column=0, row=1, sticky="n, s, e, w", padx=spacing_in * 1.45, pady=spacing_in * 1.45)
 
@@ -1375,7 +1454,7 @@ btn_add_item = Button(frm_results, text="Add a new item", command=lambda: add_ed
 btn_add_item.grid(column=1, row=2, sticky="e")
 
 # create the button that will be used to delete more items
-btn_delete_item = Button(frm_results, text="Delete selected item", activeforeground=text_color, command=item_delete)
+btn_delete_item = Button(frm_results, text="Delete selected item", activeforeground=text_color, command=item_delete_ask_user, state="disabled")
 btn_delete_item.grid(column=0, row=2, sticky="w")
 
 # print column titles for easier user understanding
@@ -1392,9 +1471,9 @@ lab_result_spacing = Label(frm_results_titlerow, text="", width=int(srlb_results
                            background=color_light)
 lab_result_spacing.grid(row=0, column=3)
 
+
 # ---------------------------area to display item information---------------------------
-# the frame for the accompanying stuff to go in
-frm_info = Frame(window)
+frm_info = Frame(window)    # the frame for the accompanying stuff to go in
 frm_info.grid(column=1, row=1, sticky="n, s, e, w", padx=spacing_out_x, pady=spacing_out_y)
 
 # the outer frame that will hold all information stuff
@@ -1428,6 +1507,7 @@ frm_info_scroll_wrapper.grid_rowconfigure(0, weight=1)
 frm_info_inner.grid_columnconfigure(4, weight=1)
 
 frm_info_scroll_wrapper.grid(column=0, row=0, sticky="n, s, e, w")
+
 
 # ---------------------------keeping the window open and some widget sizing stuff---------------------------
 window.mainloop()  # keeps the window open

@@ -2,7 +2,7 @@ class Logic:     # just important for get_name and get_description (means its on
     def __init__(self, name, description, image):  # constructor for class
         self._name = name
         self._description = description
-        self._image = image
+        self._image = "image info would go here"
 
     def get_name(self):
         return self._name

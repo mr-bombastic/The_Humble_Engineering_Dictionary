@@ -1,0 +1,3 @@
+_=^=_& Lost items are found here
+Logic boi&logic definition would go here&image info would go here
+equation boi&Equation description testing.&sin((v + (c ^ 2)))&type:Variable&variable boi&Variable test description.&v&rad&None&type:Constant&constant boi&Constant test description.&c&m/s&21.69&end:Equation
