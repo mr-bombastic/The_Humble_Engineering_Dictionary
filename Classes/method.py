@@ -1,8 +1,4 @@
-from logic import *  # will import all classes in that document
-from constant import *  # will import all classes in that document
-from variable import *  # will import all classes in that document
-from equation import *  # will import all classes in that document
-from theory import *  # will import all classes in that document
+from Classes.equation import *  # will import all classes in that document
 
 
 class Method(Logic):

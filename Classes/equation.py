@@ -1,7 +1,5 @@
 from Equation import Expression
-from logic import *  # will import all classes in that document
-from constant import *  # will import all classes in that document
-from variable import *  # will import all classes in that document
+from Classes.logic import *  # will import all classes in that document
 
 
 class Equation(Logic):

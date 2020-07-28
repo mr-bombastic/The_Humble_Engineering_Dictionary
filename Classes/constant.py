@@ -1,4 +1,4 @@
-from logic import *  # will import all classes in that document
+from Classes.logic import *  # will import all classes in that document
 
 
 class Constant(Logic):

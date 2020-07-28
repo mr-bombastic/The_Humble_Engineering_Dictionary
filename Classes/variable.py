@@ -1,4 +1,4 @@
-from constant import *  # will import all classes in that document
+from Classes.constant import *  # will import all classes in that document
 
 
 class Variable(Constant):   # inherits everything from constant (even the constructor)
