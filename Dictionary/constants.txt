@@ -1,0 +1,3 @@
+_=^=_& name & description & symbol & unit & value
+constant boi&Constant test description.&c&m/s&21.69
+constant boi&Constant test description.&c&m/s&21.69
