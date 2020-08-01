@@ -27,7 +27,7 @@ right_side_thickness = 150
 
 # stuff that transcends various dimensions
 previously_altered_widgets = []
-step_num = 1
+step_num = 0
 selected_item = ""
 search_results = []  # create an array of the results
 
@@ -694,7 +694,7 @@ def string_to_item_conversion_logic(line, item_type):
             # will combine everything together into a method item and add it to the list
             item = Method(split_line[0], split_line[1], list_of_steps)
         elif item_type == "Logic":  # when displaying logic info
-            item = Logic(split_line[0], split_line[1], split_line[2])
+            item = Logic(split_line[0], split_line[1], "")
 
     return item  # return the item
 
@@ -839,14 +839,14 @@ def add_edit_item_window(to_edit):
     lab_def = Label(frm_add_edit_inner, text="Definition:", highlightthickness=1,
                     highlightbackground=accent_light)
     lab_def.grid(column=0, row=2, sticky="n, s, e, w")
-    txt_def = Entry(frm_add_edit_inner,
+    txt_def = Text(frm_add_edit_inner,
                     highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=2, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
     # will add the edit item's stuff into the entry boxes
     if to_edit:
         txt_name.insert(0, selected_item.get_name())
-        txt_def.insert(0, selected_item.get_description())
+        txt_def.insert("insert", selected_item.get_description())
 
     # drop down for adding items, "e" will give the option that was clicked on
     opm_type = OptionMenu(frm_add_edit_inner, item_type_to_add_or_edit,
@@ -899,7 +899,7 @@ def add_edit_item_option_display(type_to_display, container_widget, to_edit):
 
     # reset this value as something different is being added
     global step_num
-    step_num = 1
+    step_num = 0
 
     # will decide what needs to be displayed depending on the type of item
     if type_to_display == "Variable" or type_to_display == "Constant":  # when displaying info about a variable/constant
@@ -996,10 +996,6 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
     frm_equ_holder.columnconfigure(2, weight=1)
     frm_equ_holder.columnconfigure(3, weight=1)
 
-    Label(frm_equ_holder, text="Featured variables/constants:", highlightthickness=1, highlightbackground=accent_light,
-          font=("TkDefaultFont", fontsize + 2, "bold", "italic")) \
-        .grid(column=0, columnspan=2, row=1, sticky="n, s, e, w")
-
     frm_add_btns_holder = Frame(frm_equ_holder)
     frm_add_btns_holder.grid(column=2, row=1, sticky="n, s, e, w")
     frm_add_btns_holder.columnconfigure(0, weight=1)
@@ -1012,6 +1008,10 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
     btn_add_const = Button(frm_add_btns_holder, text="Add Constant",
                            command=lambda: add_edit_item_equation_item_add("Constant", frm_equ_holder, False))
     btn_add_const.grid(column=1, row=0, sticky="n, s, e, w")
+
+    Label(frm_equ_holder, text="Featured variables/constants:", highlightthickness=1, highlightbackground=accent_light,
+          font=("TkDefaultFont", fontsize + 2, "bold", "italic")) \
+        .grid(column=0, columnspan=2, row=1, sticky="n, s, e, w")
 
     # will automatically display all the variables and constants affiliated with this equation when in editing mode
     if to_edit:
@@ -1031,12 +1031,17 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
     if type_to_display == "Variable":
         Label(container_widget, text="Variable:",
               anchor="center", font=("TkDefaultFont", fontsize, "italic", "underline")) \
-            .grid(column=0, columnspan=3, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
 
     else:
         Label(container_widget, text="Constant:",
               anchor="center", font=("TkDefaultFont", fontsize, "italic", "underline")) \
-            .grid(column=0, columnspan=3, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
+
+    btn_equ_item_delete = Button(container_widget, text="Delete this " + type_to_display,
+                                 command=lambda: delete_added_item(container_widget, btn_equ_item_delete,
+                                                                   type_to_display, False))
+    btn_equ_item_delete.grid(column=2, row=start_row, sticky="n, s, e")
 
     start_row += 1
 
@@ -1049,7 +1054,7 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
 
     lab_def = Label(container_widget, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
     lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
-    txt_def = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
+    txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
     start_row += 1
@@ -1057,7 +1062,7 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
     # will add the edit item's stuff into the entry boxes
     if to_edit:
         txt_name.insert(0, item_to_add.get_name())
-        txt_def.insert(0, item_to_add.get_description())
+        txt_def.insert('insert', item_to_add.get_description())
 
     add_edit_item_v_or_c_display(type_to_display, container_widget, to_edit, item_to_add)
 
@@ -1065,16 +1070,21 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
 # displays wrapping items then calls respective item addition to display all items in/to add to the method
 def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to_display):
     global step_num
+    step = step_num + 1
+    step_num += 1
 
     # used to check to make sure user selected an actual item
     if type_to_display != "Select an item to add":
         start_row = container_widget.winfo_children()[-1].grid_info()['row'] + 1
 
-        Label(container_widget, highlightthickness=1, text="Step " + str(step_num) + ": " + str(type_to_display),
+        Label(container_widget, highlightthickness=1, text="Step " + str(step) + ": " + str(type_to_display),
               highlightbackground=accent_light, font=("TkDefaultFont", fontsize + 5, "bold", "italic")) \
-            .grid(column=0, columnspan=3, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
 
-        step_num += 1
+        btn_method_item_delete = Button(container_widget, text="Delete this " + type_to_display,
+                                        command=lambda: delete_added_item(container_widget, btn_method_item_delete, type_to_display, True))
+        btn_method_item_delete.grid(column=2, row=start_row, sticky="n, s, e, w")
+
         start_row += 1
 
         lab_name = Label(container_widget, text="Name:")
@@ -1086,7 +1096,7 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
 
         lab_def = Label(container_widget, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
         lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
-        txt_def = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
+        txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
         txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
         start_row += 1
@@ -1094,7 +1104,7 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
         # will add the edit item's stuff into the entry boxes
         if to_edit:
             txt_name.insert(0, item_to_display.get_name())
-            txt_def.insert(0, item_to_display.get_description())
+            txt_def.insert('insert', item_to_display.get_description())
 
             start_row += 1
 
@@ -1126,114 +1136,183 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
         print("Please select an item pop-up window would occur here")
 
 
+def delete_added_item(container_widget, button, type_to_delete, in_meth):
+    number_of_children = 0
+
+    if type_to_delete == "Logic":
+        number_of_children = 6
+    elif type_to_delete == "Variable":
+        number_of_children = 10
+    elif type_to_delete == "Constant":
+        number_of_children = 12
+    elif type_to_delete == "Equation":
+        number_of_children = 9
+    elif type_to_delete == "Theory":
+        number_of_children = 7
+
+    all_children = container_widget.winfo_children()
+
+    start_child = 0
+
+    for c in range(0, len(all_children)):
+        if all_children[c] == button:
+            start_child = c - 1
+            break
+
+    children_to_delete = all_children[start_child:start_child + number_of_children]
+
+    # delete the children that are to be deleted
+    for child in children_to_delete:
+        child.destroy()
+
+    # if the deleting is happening within a method, this will reset the step labels
+    if in_meth:
+        global step_num
+        step_num -= 1
+        new_step = 1
+
+        all_children = container_widget.winfo_children()
+
+        for child in all_children:
+            if child.winfo_class() == "Label":
+                label_text = child.cget("text").rsplit(" ")     # split up label text to better extract different parts
+
+                if label_text[0] == "Step":
+                    label_text[1] = str(new_step) + ":"       # change the name of numerical portion of the label text
+                    child.configure(text=label_text)
+                    new_step += 1
+
+
 # will add or edit the item the user has given
 def item_submit(container_widget, to_edit, top_level_window):
     list_of_widgets = container_widget.winfo_children()
     item_type_selected = item_type_to_add_or_edit.get()
 
     item_to_save = ""
-    list_of_txt_box_text = []
+    outer_list_of_txt_input = []
+    full_list_of_txt_input = []     # used for checking all text input for irregularities
 
     # collect all the text boxes into a list
     for item in list_of_widgets:
         if item.winfo_class() == "Entry":
-            list_of_txt_box_text.append(item.get())
+            outer_list_of_txt_input.append(item.get())
+            full_list_of_txt_input.append(item.get())
+
+        elif item.winfo_class() == "Text":
+            outer_list_of_txt_input.append(item.get(1.0, "end"))
+            full_list_of_txt_input.append(item.get(1.0, "end"))
+
+        elif item.winfo_class() == "Frame":
+            list_of_frame_widgets = item.winfo_children()
+            for inner_item in list_of_frame_widgets:
+                if inner_item.winfo_class() == "Entry":
+                    full_list_of_txt_input.append(inner_item.get())
+
+                elif inner_item.winfo_class() == "Text":
+                    full_list_of_txt_input.append(inner_item.get(1.0, "end"))
 
 
-    # will start the save logic corresponding to what the user wants to save
-    if item_type_selected == "Logic":
-        list_of_txt_box_text.append("")     # since image stuff hasn't been implemented
-        item_to_save = item_submit_log_var_const(list_of_txt_box_text)
-
-    elif item_type_selected == "Variable":
-        item_to_save = item_submit_log_var_const(list_of_txt_box_text)
-
-    elif item_type_selected == "Constant":
-        item_to_save = item_submit_log_var_const(list_of_txt_box_text)
-
-    elif item_type_selected == "Equation":
-        item_to_save = item_submit_equ(list_of_txt_box_text, list_of_widgets[-1].winfo_children())
-
-    elif item_type_selected == "Method":
-        last_child = LabelFrame()
-        list_of_steps = []
-        list_of_frames = []
-        i_entry = 2
-        i_frame = 0
-
-        # get all frames in the list_of_widgets. Used only for equations
-        for item in list_of_widgets:
-            if item.winfo_class() == "Frame":
-                list_of_frames.append(item)
-
-        for child in list_of_widgets:
-            if last_child.winfo_class() == child.winfo_class() and last_child.winfo_class() == "Label" and last_child.cget(
-                    "text") != "Theory isn't functional":
-                # will keep characters after the ":" then remove the space just before the actual word
-                text = last_child.cget("text").rsplit(":", 1)[1]
-                check_text = text[1:]
-
-                if check_text == "Variable":
-                    list_of_steps.append(item_submit_log_var_const(list_of_txt_box_text[i_entry:i_entry + 4]))
-                    i_entry += 4
-
-                elif check_text == "Constant":
-                    list_of_steps.append(item_submit_log_var_const(list_of_txt_box_text[i_entry:i_entry + 5]))
-                    i_entry += 5
-
-                elif check_text == "Logic":
-                    list_of_steps.append(item_submit_log_var_const(list_of_txt_box_text[i_entry:i_entry + 2]))
-                    i_entry += 2
-
-                elif check_text == "Theory":
-                    list_of_steps.append(Theory(list_of_txt_box_text[i_entry], list_of_txt_box_text[i_entry + 1],
-                                                "Equation would go here"))
-                    i_entry += 1
-
-                elif check_text == "Equation":
-                    list_of_steps.append(item_submit_equ(list_of_txt_box_text[i_entry:i_entry + 3],
-                                                         list_of_frames[i_frame].winfo_children()))
-                    i_frame += 1
-                    i_entry += 3
-
-            last_child = child
-
-        item_to_save = Method(list_of_txt_box_text[0], list_of_txt_box_text[1], list_of_steps)
-
-
+    is_special_char_present = False
     is_there_blank_space = False
 
-    # will look out for blank spaces. if there are any then it will save that
-    for text in item_to_string(item_to_save).split('&'):
-        if text == '':
+    for user_input in full_list_of_txt_input:
+        if '&' in user_input:       # will look out for the use of the special character '&'
+            is_special_char_present = True
+
+        if user_input == '' or user_input == '\n':        # will look out for emptiness
             is_there_blank_space = True
 
-    # checks to see if there are blanks
-    if not is_there_blank_space:
 
-        # checks to make sure there isn't a repeated item
-        if not check_for_repeats(item_to_save):
+    if is_there_blank_space:
+        alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
+                   False)
 
-            # if the user wants to edit an item they can change the type of item they want to edit
+    elif is_special_char_present:
+        alert_user("In one of the fields you have used the character '&'. This is not allowed. Please change it.",
+                   False)
+
+    else:
+        # will start the save logic corresponding to what the user wants to save
+        if item_type_selected == "Logic":
+            outer_list_of_txt_input.append("")  # since image stuff hasn't been implemented
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+
+        elif item_type_selected == "Variable":
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+
+        elif item_type_selected == "Constant":
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+
+        elif item_type_selected == "Equation":
+            item_to_save = item_submit_equ(outer_list_of_txt_input, list_of_widgets[-1].winfo_children())
+
+        elif item_type_selected == "Method":
+            last_child = LabelFrame()
+            list_of_steps = []
+            list_of_frames = []
+            i_entry = 2
+            i_frame = 0
+
+            # get all frames in the list_of_widgets. Used only for equations
+            for item in list_of_widgets:
+                if item.winfo_class() == "Frame":
+                    list_of_frames.append(item)
+
+            for child in list_of_widgets:
+                if last_child.winfo_class() == "Label" and child.winfo_class() == "Button" and last_child.cget(
+                        "text") != "Theory isn't functional":
+                    # will keep characters after the ":" then remove the space just before the actual word
+                    text = last_child.cget("text").rsplit(":", 1)[1]
+                    check_text = text[1:]
+
+                    if check_text == "Variable":
+                        list_of_steps.append(item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 4]))
+                        i_entry += 4
+
+                    elif check_text == "Constant":
+                        list_of_steps.append(item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 5]))
+                        i_entry += 5
+
+                    elif check_text == "Logic":
+                        # logic_text is stop gap until logic images are implemented
+                        logic_text = outer_list_of_txt_input[i_entry:i_entry + 2]
+
+                        list_of_steps.append(item_submit_log_var_const(logic_text))
+                        i_entry += 2
+
+                    elif check_text == "Theory":
+                        list_of_steps.append(Theory(outer_list_of_txt_input[i_entry], outer_list_of_txt_input[i_entry + 1],
+                                                    "Equation would go here"))
+                        i_entry += 1
+
+                    elif check_text == "Equation":
+                        list_of_steps.append(item_submit_equ(outer_list_of_txt_input[i_entry:i_entry + 3],
+                                                             list_of_frames[i_frame].winfo_children()))
+                        i_frame += 1
+                        i_entry += 3
+
+                last_child = child
+
+            item_to_save = Method(outer_list_of_txt_input[0], outer_list_of_txt_input[1], list_of_steps)
+
+        # checks to see if there is a repeat of the item
+        if check_for_repeats(item_to_save):
+            alert_user("There is an item already in the dictionary that matches what you just entered.\n"
+                       "This repeated item will not be added to the dictionary.", False)
+
+        else:   # if there is no repeat then the item will be saved
+            # if the user wants to edit an item then the old item is moved to the trash
             if to_edit:
                 move_item_to_trash(selected_item)
 
             save_items(item_to_save)
             top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
 
-        else:
-            alert_user("There is an item already in the dictionary that matches what you just entered.\n"
-                       "This repeated item will not be added to the dictionary.", False)
-
-    else:
-        alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
-                   False)
-
 
 # will return a logic, variable, or constant depending on the length of list given
 def item_submit_log_var_const(text_list):
     if len(text_list) < 4:
-        return Logic(text_list[0], text_list[1], text_list[2])
+        return Logic(text_list[0], text_list[1], "")    #-------------------------------------- NEED TO ADD IMAGES TOO
 
     elif len(text_list) == 4:
         return Variable(text_list[0], text_list[2], 0, text_list[3], text_list[1])
@@ -1251,17 +1330,21 @@ def item_submit_equ(outer_text_list, equ_frame_children):
         if item.winfo_class() == "Entry":
             equ_frame_txt_box_text.append(item.get())
 
+        elif item.winfo_class() == "Text":
+            equ_frame_txt_box_text.append(item.get(1.0, "end"))
+
+
     equ_last_frame_child = LabelFrame()
     list_of_variables = []
     i_entry = 0
 
     for child in equ_frame_children:
-        if equ_last_frame_child.winfo_class() == child.winfo_class() and equ_last_frame_child.winfo_class() == "Label":
+        if equ_last_frame_child.winfo_class() == "Label" and child.winfo_class() == "Button":
             if equ_last_frame_child.cget("text") == "Variable:":
                 list_of_variables.append(item_submit_log_var_const(equ_frame_txt_box_text[i_entry:i_entry + 4]))
                 i_entry += 4
 
-            elif equ_last_frame_child.cget("text") == "Constant:":
+            elif child.cget("text") == "Constant:":
                 list_of_variables.append(item_submit_log_var_const(equ_frame_txt_box_text[i_entry:i_entry + 5]))
                 i_entry += 5
 
@@ -1273,7 +1356,7 @@ def item_submit_equ(outer_text_list, equ_frame_children):
 # asks the user if they do wish to delete their selected item before doing so
 def item_delete_ask_user():
     if alert_user("Do you wish to delete the selected item?", True):
-        move_item_to_trash()
+        move_item_to_trash(selected_item)
 
 
 # used to move any item to the trash document
