@@ -1,33 +1,17 @@
-#!/usr/bin python
-import sys
-from tkinter import *
-
-# My frame for form
-class simpleform_ap(Tk):
-
-    def __init__(self,parent):
-        Tk.__init__(self,parent)
-        self.parent = parent
-        self.initialize()
-        self.grid()
-
-    def initialize(self):
-        # Dropdown Menu
-        optionList = ["Yes","No"]
-        self.dropVar=StringVar()
-        self.dropVar.set("Yes") # default choice
-        self.dropMenu1 = OptionMenu(self, self.dropVar, *optionList,
-                                    command=self.func)
-        self.dropMenu1.grid(column=1,row=4)
-
-    def func(self,value):
-        print(value)
+import numpy as np
+import matplotlib
+matplotlib.rcParams['text.usetex'] = True
+import matplotlib.pyplot as plt
 
 
-def create_form(argv):
-    form = simpleform_ap(None)
-    form.title('My form')
-    form.mainloop()
+t = np.linspace(0.0, 1.0, 100)
+s = np.cos(4 * np.pi * t) + 2
 
-if __name__ == "__main__":
-    create_form(sys.argv)
+fig, ax = plt.subplots(figsize=(6, 4), tight_layout=True)
+ax.plot(t, s)
+
+ax.set_xlabel(r'\textbf{time (s)}')
+ax.set_ylabel('\\textit{Velocity (\N{DEGREE SIGN}/sec)}', fontsize=16)
+ax.set_title(r'\TeX\ is Number $\displaystyle\sum_{n=1}^\infty'
+             r'\frac{-e^{i\pi}}{2^n}$!', fontsize=16, color='r')
+plt.show()

@@ -31,7 +31,11 @@ class Equation(Logic):
     def get_num_of_variables(self):     # returns number of UNIQUE variables
         return self._num_of_var
 
-    def solve_equation_auto(self):  # Will try to solve the array automatically. If a variable doesn't have a value then the user will be asked
+    def compile_expression(self):
+        pass
+
+    # Will try to solve the array automatically. If a variable doesn't have a value then the user will be asked
+    def solve_equation_auto(self):
         values = []     # will store the values of the variables
         for i in range(0, self._num_of_var):     # will go through each variable
             if self._variables[i].get_value() == None:   # when there is no value attached to the variable ask the user
@@ -39,23 +43,9 @@ class Equation(Logic):
                                                   " [" + self._variables[i].get_symbol() + "]?")))
             values.append(self._variables[i].get_value())    # saves the value of the variable
 
-        return self._equ(*values)    # the * unpacks the array into its constituent parts so that they can be inputed as individual arguments
+        # the * unpacks the array into its constituent parts so that they can be inputed as individual arguments
+        return self._equ(*values)
 
     def solve_equation_manual(self, values):   # takes array with corresponding user values and solves the equation
-        return self._equ(*values)    # the * unpacks the array into its constituent parts so that they can be inputed as individual arguments
-
-
-# x = Variable("horizontal displacment", "x", None, "meters", "indicates horizontal displacment")
-# y = Constant("vertical displacment", "y", 3, "meters", "indicates vertical displacment")
-#
-# e = Equation("sin", "x+sin(x+y^2)", [x, y], "sine wave")
-#
-# print(e.solve_equation_manual([4, 3]))
-# print(e.solve_equation_auto())
-# vals = [3, 4]
-# equ = Expression("x+sin(x+y^2)", ["y", "x"])
-# print(equ(3, 4))
-#
-# print(type(e))
-# print(isinstance(x, Variable))
-# print(type(y))
+        # the * unpacks the array into its constituent parts so that they can be inputed as individual arguments
+        return self._equ(*values)

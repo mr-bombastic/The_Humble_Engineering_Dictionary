@@ -40,6 +40,8 @@ e_test = Equation("equation boi", "Equation description testing.", "sin(" + str(
 t_test = Theory("theory boi", "Theory description test", e_test)
 m_test = Method("method boi", "method test description", [l_logic, v_test, c_test, e_test, t_test])
 
+e_test.compile_expression()
+
 test_items = [l_logic, v_test, c_test, e_test, t_test, m_test]
 # test variables ======================================================================================================
 
