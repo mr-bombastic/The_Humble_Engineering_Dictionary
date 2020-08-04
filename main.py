@@ -109,17 +109,17 @@ def print_all():
     search_results.clear()  # removes all items from search results
 
     if search_variables.get() == 1:  # when the user whats to search through variables
-        search_results.extend(string_to_item(get_file_lines("Dictionary/variables.txt"), "Variable"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/variables/variables.txt"), "Variable"))
     if search_constants.get() == 1:  # when the user whats to search through constants
-        search_results.extend(string_to_item(get_file_lines("Dictionary/constants.txt"), "Constant"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
     if search_equations.get() == 1:  # when the user whats to search through equations
-        search_results.extend(string_to_item(get_file_lines("Dictionary/equations.txt"), "Equation"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
     if search_theories.get() == 1:  # when the user whats to search through theories
         search_results.extend(string_to_item(get_file_lines("Dictionary/theories.txt"), "Theory"))
     if search_logic.get() == 1:  # when the user whats to search through logic
-        search_results.extend(string_to_item(get_file_lines("Dictionary/logic.txt"), "Logic"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
     if search_methods.get() == 1:  # when the user whats to search through methods
-        search_results.extend(string_to_item(get_file_lines("Dictionary/methods.txt"), "Method"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/methods/methods.txt"), "Method"))
 
     print_results()
 
@@ -132,17 +132,17 @@ def search():
         search_results.clear()  # removes all items from search results
 
         if search_variables.get() == 1:  # when the user whats to search through variables
-            search_results.extend(string_to_item(get_file_lines("Dictionary/variables.txt"), "Variable"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/variables/variables.txt"), "Variable"))
         if search_constants.get() == 1:  # when the user whats to search through constants
-            search_results.extend(string_to_item(get_file_lines("Dictionary/constants.txt"), "Constant"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
         if search_equations.get() == 1:  # when the user whats to search through equations
-            search_results.extend(string_to_item(get_file_lines("Dictionary/equations.txt"), "Equation"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
         if search_theories.get() == 1:  # when the user whats to search through theories
             search_results.extend(string_to_item(get_file_lines("Dictionary/theories.txt"), "Theory"))
         if search_logic.get() == 1:  # when the user whats to search through logic
-            search_results.extend(string_to_item(get_file_lines("Dictionary/logic.txt"), "Logic"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
         if search_methods.get() == 1:  # when the user whats to search through methods
-            search_results.extend(string_to_item(get_file_lines("Dictionary/methods.txt"), "Method"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/methods/methods.txt"), "Method"))
 
         search_in_list(txt_search.get(), search_results)
 
@@ -703,19 +703,19 @@ def string_to_item_conversion_logic(line, item_type):
 def get_item_file_directory(item):
     # will decide the correct file directory for the item
     if isinstance(item, Variable):  # when displaying info about a variable
-        file_directory = "Dictionary/variables.txt"
+        file_directory = "Dictionary/variables/variables.txt"
     elif isinstance(item, Constant):  # when displaying info about a constant
-        file_directory = "Dictionary/constants.txt"
+        file_directory = "Dictionary/constants/constants.txt"
     elif isinstance(item, Equation):  # when displaying info about a equation
-        file_directory = "Dictionary/equations.txt"
+        file_directory = "Dictionary/equations/equations.txt"
     elif isinstance(item, Theory):  # when displaying info about a theory
         file_directory = "Dictionary/theories.txt"
     elif isinstance(item, Method):  # when displaying info about a method
-        file_directory = "Dictionary/methods.txt"
+        file_directory = "Dictionary/methods/methods.txt"
     elif isinstance(item, Logic):  # when displaying logic info
-        file_directory = "Dictionary/logic.txt"
+        file_directory = "Dictionary/logic/logic.txt"
     else:
-        file_directory = "Dictionary/lost_or_deleted_items.txt"
+        file_directory = "Dictionary/lost_or_deleted_items/lost_or_deleted_items.txt"
     return file_directory
 
 
@@ -752,17 +752,17 @@ def file_existence_filter(target_file):
     except FileNotFoundError:
         file = open(target_file, 'w')  # open file
 
-        if target_file == "Dictionary/variables.txt":  # when writing info for a variable
+        if target_file == "Dictionary/variables/variables.txt":  # when writing info for a variable
             file.write("_=^=_& name & description & symbol & unit & last saved value")
-        elif target_file == "Dictionary/constants.txt":  # when writing info for a constant
+        elif target_file == "Dictionary/constants/constants.txt":  # when writing info for a constant
             file.write("_=^=_& name & description & symbol & unit & value")
-        elif target_file == "Dictionary/equations.txt":  # when writing info for a equation
+        elif target_file == "Dictionary/equations/equations.txt":  # when writing info for a equation
             file.write("_=^=_& name & description & equation in latex form & list of accompanying items")
         elif target_file == "Dictionary/theories.txt":  # when writing info for a theory
             file.write("_=^=_& name & description & other unfinished shite")
-        elif target_file == "Dictionary/logic.txt":  # when writing info for a logic
+        elif target_file == "Dictionary/logic/logic.txt":  # when writing info for a logic
             file.write("_=^=_& name & description & image")
-        elif target_file == "Dictionary/methods.txt":  # when writing info for method
+        elif target_file == "Dictionary/methods/methods.txt":  # when writing info for method
             file.write("_=^=_& name & description & steps listed as various items")
         else:
             file.write("_=^=_& Lost items are found here")
@@ -1219,7 +1219,7 @@ def item_submit(container_widget, to_edit, top_level_window):
         if '&' in user_input:       # will look out for the use of the special character '&'
             is_special_char_present = True
 
-        if user_input == '' or user_input == '\n':        # will look out for emptiness
+        if user_input == '' or user_input == '\n' or user_input == ' ':        # will look out for emptiness
             is_there_blank_space = True
 
 
@@ -1377,10 +1377,10 @@ def move_item_to_trash(item):
     start_file.close()    # close the file
 
     # check if the lost/deleted file exists
-    file_existence_filter("Dictionary/lost_or_deleted_items.txt")
+    file_existence_filter("Dictionary/lost_or_deleted_items/lost_or_deleted_items.txt")
 
     # write the selected_item into the lost/deleted file
-    end_file = open("Dictionary/lost_or_deleted_items.txt", 'a')  # open file
+    end_file = open("Dictionary/lost_or_deleted_items/lost_or_deleted_items.txt", 'a')  # open file
     end_file.write(selected_item_as_string)
     end_file.close()  # close the file
 
