@@ -1,2 +1,1 @@
 _=^=_& name & description & equation in latex form & list of accompanying items
-equation boi&Equation description testing.&sin((v + (c ^ 2)))&type:Variable&variable boi&Variable test description.&v&rad&0&type:Constant&constant boi&Constant test description.&c&m/s&21.69&end:Equation

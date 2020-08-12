@@ -1,26 +1,11 @@
 from tkinter import *
+from Classes.logic import *
 
-window = Tk()  # creates the window
+root = Tk()
+canvas = Canvas(root, width = 300, height = 300)
+canvas.pack()
 
-frame = Frame(window)
-frame.pack()
+L = Logic("name", "desciption", "Dictionary\logic\red.png")
 
-val = StringVar()
-
-test1 = Button(frame, text="test")
-test2 = Label(frame, text="test")
-test3 = Entry(frame)
-test4 = Button(frame, text="test")
-test5 = Label(frame, text="test")
-test6 = OptionMenu(frame, val, "test")
-
-val.set("Variable")
-
-print(test6.getvar("variable"))
-
-for item in frame.winfo_children():
-    if item.winfo_class() == "optionMenu":
-        print(item.get())
-
-
-window.mainloop()
+canvas.create_image(20,20, anchor=NW, image=L.get_image())
+mainloop()

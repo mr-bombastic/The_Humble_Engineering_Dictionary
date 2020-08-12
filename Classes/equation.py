@@ -4,11 +4,12 @@ from Classes.logic import *  # will import all classes in that document
 
 class Equation(Logic):
 
-    def __init__(self, name, description, expression, variables):   # constructor for class
-        self._name = name
-        self._description = description
+    def __init__(self, name, description, expression, variables, image):   # constructor for class
+        super(Logic, self).__init__(name, description, image)
+
         self._variables = variables
         self._num_of_var = len(variables)    # stores number of UNIQUE variables
+        self._expression = expression
 
         # extracts the variable's symbol so that it can be placed into the equation
         var_symbols = []
@@ -20,9 +21,9 @@ class Equation(Logic):
         self._equ = Expression(expression, var_symbols)
 
     def get_equation_latex(self):   # will return latex version of equation
-        return self._equ.__str__()
+        return self._expression
 
-    def get_equation_normal(self):   # will return latex version of equation
+    def get_equation_normal(self):   # will return the normal version of equation
         return self._equ.__repr__()
 
     def get_all_variables(self):    # gives back every variable/constant in equation

@@ -1,2 +1,1 @@
-
-constant boi&Constant test description.&e&m/s&21
+_=^=_& name & description & symbol & unit & value

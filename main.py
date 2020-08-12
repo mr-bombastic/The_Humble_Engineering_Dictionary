@@ -5,9 +5,12 @@ from Classes.logic import *
 from Classes.variable import *
 from Classes.constant import *
 from Classes.equation import *
-from Classes.theory import *
 from Classes.method import *
+from matplotlib import *
+from matplotlib import figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
+use('TkAgg')    # something for displaying equations, not quite sure what it does
 
 # colors and other variables
 color_dark = "#2b2b2b"  # background color
@@ -32,17 +35,16 @@ selected_item = ""
 search_results = []  # create an array of the results
 
 # test variables ======================================================================================================
-l_logic = Logic("Logic boi", "some information about logic stuff that is super long and designed to break the ui", "")
-v_test = Variable("variable boi", "v", None, "rad", "Variable test description.")
-c_test = Constant("constant boi", "c", 21.69, "m/s", "Constant test description.")
-e_test = Equation("equation boi", "Equation description testing.", "sin(" + str(v_test.get_symbol()) + "+" +
-                  str(c_test.get_symbol()) + "^2)", [v_test, c_test])
-t_test = Theory("theory boi", "Theory description test", e_test)
-m_test = Method("method boi", "method test description", [l_logic, v_test, c_test, e_test, t_test])
-
-e_test.compile_expression()
-
-test_items = [l_logic, v_test, c_test, e_test, t_test, m_test]
+# l_logic = Logic("Logic boi", "some information about logic stuff that is super long and designed to break the ui", "")
+# v_test = Variable("variable boi", "v", None, "rad", "Variable test description.")
+# c_test = Constant("constant boi", "c", 21.69, "m/s", "Constant test description.")
+# e_test = Equation("equation boi", "Equation description testing.", "sin(" + str(v_test.get_symbol()) + "+" +
+#                   str(c_test.get_symbol()) + "^2)", [v_test, c_test])
+# m_test = Method("method boi", "method test description", [l_logic, v_test, c_test, e_test, t_test])
+#
+# e_test.compile_expression()
+#
+# test_items = [l_logic, v_test, c_test, e_test, t_test, m_test]
 # test variables ======================================================================================================
 
 # main window stuff
@@ -56,7 +58,7 @@ default_font = tkfont.Font(size=fontsize)
 window.option_add("*Font", default_font)
 
 # measure the length of m to get an idea of the number of pixels a character is
-m_len = default_font.measure("m")
+m_len = default_font.measure('m')
 
 # set these items default font style and size
 window.option_add("*Labelframe.Font", "Arial " + str(fontsize) + " bold italic")
@@ -86,7 +88,6 @@ window.grid_rowconfigure(1, weight=1)
 search_variables = IntVar(value=1)
 search_constants = IntVar(value=1)
 search_equations = IntVar(value=1)
-search_theories = IntVar(value=1)
 search_logic = IntVar(value=1)
 search_methods = IntVar(value=1)
 search_names = IntVar(value=1)
@@ -95,6 +96,7 @@ search_symbol = IntVar(value=1)
 search_value = IntVar(value=1)
 search_units = IntVar(value=1)
 item_type_to_add_or_edit = StringVar()  # this is for adding/editing items. Let it be
+
 
 # used to alert the user of their actions and asks them if they want to continue or not
 def alert_user(display_string, get_input):
@@ -116,8 +118,6 @@ def print_all():
         search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
     if search_equations.get() == 1:  # when the user whats to search through equations
         search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
-    if search_theories.get() == 1:  # when the user whats to search through theories
-        search_results.extend(string_to_item(get_file_lines("Dictionary/theories.txt"), "Theory"))
     if search_logic.get() == 1:  # when the user whats to search through logic
         search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
     if search_methods.get() == 1:  # when the user whats to search through methods
@@ -139,8 +139,6 @@ def search():
             search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
         if search_equations.get() == 1:  # when the user whats to search through equations
             search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
-        if search_theories.get() == 1:  # when the user whats to search through theories
-            search_results.extend(string_to_item(get_file_lines("Dictionary/theories.txt"), "Theory"))
         if search_logic.get() == 1:  # when the user whats to search through logic
             search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
         if search_methods.get() == 1:  # when the user whats to search through methods
@@ -261,12 +259,20 @@ def callback_get_widget_row(event):
     # if something was clicked before this will reset the colors so its not highlighted
     if previously_altered_widgets != "":
         for widget in previously_altered_widgets:
-            widget.configure(activebackground=color_mid, selectcolor=color_mid)
+            if widget.winfo_class() != "Frame":
+                widget.configure(activebackground=color_mid, selectcolor=color_mid)
+            else:
+                widget.configure(bg=color_mid)
+                # display_info_expression_update_color(widget)
 
     # saves an array of all the widgets in the row
     widgets_to_alter = frm_results_inner.grid_slaves(row=r)
     for widget in widgets_to_alter:
-        widget.configure(activebackground=color_dark, selectcolor=color_dark)  # changes widget color to highlight
+        if widget.winfo_class() != "Frame":
+            widget.configure(activebackground=color_dark, selectcolor=color_dark)  # changes widget color to highlight
+        else:
+            widget.configure(bg=color_dark)
+            # display_info_expression_update_color(widget)
 
     previously_altered_widgets = widgets_to_alter  # saves array of widgets for if statement seen above
     display_info(r)  # display item corresponding to clicked row
@@ -327,26 +333,18 @@ def print_results():
             radb_type.grid(sticky="n, s, e, w", row=r, column=4)
 
         elif isinstance(result, Equation):  # when displaying info about a equation
-            radb_equ = Radiobutton(frm_results_inner, text=str(result.get_equation_normal()),
-                                   activebackground=color_mid, activeforeground=text_color, borderwidth=0,
-                                   selectcolor=color_mid, indicatoron=False)
-            radb_equ.bind("<Button-1>", callback_get_widget_row)
-            radb_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+            # radb_equ = Radiobutton(frm_results_inner, text=str(result.get_equation_normal()),
+            #                        activebackground=color_mid, activeforeground=text_color, borderwidth=0,
+            #                        selectcolor=color_mid, indicatoron=False)
+            # radb_equ.bind("<Button-1>", callback_get_widget_row)
+            # radb_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+
+            frm_equ = Frame(frm_results_inner, bg=color_mid)
+            display_info_expression(result.get_equation_latex(), frm_equ)
+            frm_equ.bind("<Button-1>", callback_get_widget_row)
+            frm_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
             radb_type = Radiobutton(frm_results_inner, text="Equation", activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
-
-        elif isinstance(result, Theory):  # when displaying info about a theory
-            radb_theory = Radiobutton(frm_results_inner, text="Not implemented", activebackground=color_mid,
-                                      activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                      indicatoron=False)
-            radb_theory.bind("<Button-1>", callback_get_widget_row)
-            radb_theory.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
-
-            radb_type = Radiobutton(frm_results_inner, text="Theory", activebackground=color_mid,
                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                     indicatoron=False)
             radb_type.bind("<Button-1>", callback_get_widget_row)
@@ -407,39 +405,38 @@ def display_info(r):
            activeforeground=text_color).grid(row=0, column=3, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
 
     item_type = get_item_type(selected_item)  # get the type of item being displayed
-    r = 2  # set the row to an initial value
+
+    canv_image = Canvas(frm_info_inner, bg=color_light)
+    canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
+    canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
+
+    canv_image.configure(width=canv_image)
+    r = 3  # set the row to an initial value
 
     if item_type == "Logic":  # when displaying info about logic
         Label(frm_info_inner, text="Logic").grid(padx=spacing_out_x * 2, sticky="e", row=1, column=3)
 
     elif item_type == "Variable":  # when displaying info about a variable
         Label(frm_info_inner, text="Variable").grid(padx=spacing_out_x * 1.1, sticky="e", row=1, column=3)
-        display_info_var_const(selected_item, 2)
-        r = 3
+        display_info_var_const(selected_item, r)
+        r += 1
 
     elif item_type == "Constant":  # when displaying info about a constant
         Label(frm_info_inner, text="Constant").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=3)
-        display_info_var_const(selected_item, 2)
-        r = 3
+        display_info_var_const(selected_item, r)
+        r += 1
 
     elif item_type == "Equation":  # when displaying info about a equation
         Label(frm_info_inner, text="Equation").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=3)
-        display_info_equ(selected_item, 3)
-
-    elif item_type == "Theory":  # when displaying info about a theory
-        Label(frm_info_inner, text="Thoery").grid(padx=spacing_out_x * 1.5, pady=spacing_out_y, sticky="e", row=1,
-                                                  column=3)
-        Label(frm_info_inner, text="theory not implemented") \
-            .grid(row=2, column=0, columnspan=3)
-        r = 3
+        display_info_equ(selected_item, r+1)
 
     elif item_type == "Method":  # when displaying info about a method
         Label(frm_info_inner, text="Method").grid(padx=spacing_out_x * 1.4, pady=spacing_out_y, sticky="e", row=1,
                                                   column=3)
-        Label(frm_info_inner, text=selected_item.get_description()).grid(row=2, column=0, columnspan=4,
+        Label(frm_info_inner, text=selected_item.get_description()).grid(row=r, column=0, columnspan=4,
                                                                          sticky="n, s, e, w")
 
-        r = 3  # set starting row
+        r += 1  # set starting row
 
         # loops through each step and displays the steps information
         for s in range(0, selected_item.get_num_steps()):
@@ -472,13 +469,17 @@ def display_info(r):
 # used to display information for equations. was taken out just to reduce repetition
 # does NOT display the name or description of the equation
 def display_info_equ(equ, row):
-    Label(frm_info_inner, text=equ.get_equation_normal()).grid(row=row, column=0, columnspan=3)
+    frm_expres = Frame(frm_info_inner, bg=color_light)
+    frm_expres.grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
+    display_info_expression(equ.get_equation_latex(), frm_expres)
+
     row += 1
 
     # header for list of variables/constants
     Label(frm_info_inner, text="Featured variables/constants:",
-          font=("TkDefaultFont", fontsize + 3, "italic", "underline")) \
-        .grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
+          font=("TkDefaultFont", fontsize + 3, "italic", "underline"))\
+        .grid(row=row, column=0, columnspan=3, )
+
     row += 1
 
     # loop thorough each variable/constant and display each one's info
@@ -495,6 +496,36 @@ def display_info_equ(equ, row):
         row += 1
 
     return row  # return the row so the above code knows where to start up again
+
+
+# will nicely display an expression (must be given the string not the equ itself plus should be in its own frame)
+def display_info_expression(string, container_widget):
+    container_widget_children = container_widget.winfo_children()
+
+    fig = figure.Figure()   # create the figure
+    fig.set_facecolor(container_widget.cget("bg"))  # set the background color properly
+    text = "$"+string+"$"   # reformat the text so it has the correct syntax
+
+    # create the canvas stuff that will hold the figure (not quite sure how this works)
+    canv = FigureCanvasTkAgg(fig, master=container_widget)
+    canv.get_tk_widget().grid(row=0, column=0)
+
+    # put the text into the figure
+    t = fig.text(0, 0.5, text, color=text_color)  # (x coordinat, y coordinat, text, font size)
+    canv.draw()
+
+    bb = t.get_window_extent(renderer=fig.canvas.get_renderer())
+    width = bb.width
+    height = bb.height
+    canv.get_tk_widget().configure(height=height+10, width=width+10)
+    print(container_widget.winfo_children())
+
+
+# used to update the background color (facecolor) of the expression. Just give it the widget canvas w/ fig is in
+def display_info_expression_update_color(container_widget):
+    canv = container_widget.winfo_children
+    fig = canv.figure
+    fig.set_facecolor(container_widget.cget("bg"))
 
 
 # used to display information for variables and constants. was taken out just to reduce repetition
@@ -529,8 +560,6 @@ def item_to_string(item):
             item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "")
 
         item_string += "&end:Equation"
-    elif isinstance(item, Theory):  # when displaying info about a theory
-        item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()) + '& NOT IN USE')
     elif isinstance(item, Method):  # when displaying info about a method
         item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()))
 
@@ -562,11 +591,11 @@ def string_to_item(lines, item_type):
 
 
 # will return a filled out item based on the string given. Shouldn't be used on its own
-def string_to_item_conversion_logic(line, item_type):
+def string_to_item_conversion_logic(archived_line, item_type):
     item = False  # just in case nothing is written to this it will return a 'False' error message
 
     # splits the string and removes \n and puts this array into split_string
-    split_line = str(line).replace("\n", "")
+    split_line = str(archived_line).replace("\n", "")
     split_line = split_line.split('&')
 
     # checks to make sure not to run the first line with description info through the item creator
@@ -601,8 +630,6 @@ def string_to_item_conversion_logic(line, item_type):
 
             # will create a new equation and add it to the list of items
             item = Equation(split_line[0], split_line[1], expr, list_of_var_con)
-        elif item_type == "Theory":  # when displaying info about a theory
-            item = Theory(split_line[0], split_line[1], split_line[2])
         elif item_type == "Method":  # when displaying info about a method
             list_of_steps = []
             for i in range(0, len(split_line)):
@@ -644,21 +671,10 @@ def string_to_item_conversion_logic(line, item_type):
 
                     # will remove all item flags in already considered area
                     for s in range(i, end):  # loop through each piece that corresponds to method
-                        if split_line[s] == "type:Variable" or split_line[s] == "type:Constant" or split_line[
-                            s] == "type:Equation" or \
-                                split_line[s] == "type:Theory" or split_line[s] == "type:Logic" or split_line[
-                            s] == "type:Method":
+                        if split_line[s] == "type:Variable" or split_line[s] == "type:Constant" or \
+                                split_line[s] == "type:Equation" or split_line[s] == "type:Logic" or \
+                                split_line[s] == "type:Method":
                             split_line[s] = ''
-
-                if split_line[i] == "type:Theory":
-                    for s in range(1, 3):  # loop through each piece that corresponds to theory
-                        inner_string += split_line[i + s] + '&'  # puts them all into one string
-
-                    # pass the string to convert it into a theory
-                    list_of_steps.append(string_to_item(inner_string, "Theory"))
-
-                    # will remove the flag item so that it doesn't get reintroduced
-                    split_line[i] = ''
 
                 if split_line[i] == "type:Method":
                     end = 0  # used to save when the end occurs
@@ -677,10 +693,9 @@ def string_to_item_conversion_logic(line, item_type):
 
                     # will remove all item flags in already considered area
                     for s in range(i, end):  # loop through each piece that corresponds to method
-                        if split_line[s] == "type:Variable" or split_line[s] == "type:Constant" or split_line[
-                            s] == "type:Equation" or \
-                                split_line[s] == "type:Theory" or split_line[s] == "type:Logic" or split_line[
-                            s] == "type:Method":
+                        if split_line[s] == "type:Variable" or split_line[s] == "type:Constant" or \
+                                split_line[s] == "type:Equation" or split_line[s] == "type:Logic" or \
+                                split_line[s] == "type:Method":
                             split_line[s] = ''
 
                 if split_line[i] == "type:Logic":
@@ -696,7 +711,7 @@ def string_to_item_conversion_logic(line, item_type):
             # will combine everything together into a method item and add it to the list
             item = Method(split_line[0], split_line[1], list_of_steps)
         elif item_type == "Logic":  # when displaying logic info
-            item = Logic(split_line[0], split_line[1], "")
+            item = Logic(split_line[0], split_line[1], split_line[2])
 
     return item  # return the item
 
@@ -710,8 +725,6 @@ def get_item_file_directory(item):
         file_directory = "Dictionary/constants/constants.txt"
     elif isinstance(item, Equation):  # when displaying info about a equation
         file_directory = "Dictionary/equations/equations.txt"
-    elif isinstance(item, Theory):  # when displaying info about a theory
-        file_directory = "Dictionary/theories.txt"
     elif isinstance(item, Method):  # when displaying info about a method
         file_directory = "Dictionary/methods/methods.txt"
     elif isinstance(item, Logic):  # when displaying logic info
@@ -760,8 +773,6 @@ def file_existence_filter(target_file):
             file.write("_=^=_& name & description & symbol & unit & value")
         elif target_file == "Dictionary/equations/equations.txt":  # when writing info for a equation
             file.write("_=^=_& name & description & equation in latex form & list of accompanying items")
-        elif target_file == "Dictionary/theories.txt":  # when writing info for a theory
-            file.write("_=^=_& name & description & other unfinished shite")
         elif target_file == "Dictionary/logic/logic.txt":  # when writing info for a logic
             file.write("_=^=_& name & description & image")
         elif target_file == "Dictionary/methods/methods.txt":  # when writing info for method
@@ -779,8 +790,6 @@ def get_item_type(item):
         item_type = "Constant"
     elif isinstance(item, Equation):  # when displaying info about a equation
         item_type = "Equation"
-    elif isinstance(item, Theory):  # when displaying info about a theory
-        item_type = "Theory"
     elif isinstance(item, Method):  # when displaying info about a method
         item_type = "Method"
     elif isinstance(item, Logic):  # when displaying logic info
@@ -834,29 +843,36 @@ def add_edit_item_window(to_edit):
     lab_name = Label(frm_add_edit_inner, text="Name:",
                      highlightthickness=1, highlightbackground=accent_light)
     lab_name.grid(column=0, row=1, sticky="n, s, e, w")
-    txt_name = Entry(frm_add_edit_inner,
-                     highlightthickness=1, highlightbackground=accent_light)
+    txt_name = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_name.grid(column=1, columnspan=2, row=1, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    lab_def = Label(frm_add_edit_inner, text="Definition:", highlightthickness=1,
-                    highlightbackground=accent_light)
+    lab_def = Label(frm_add_edit_inner, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
     lab_def.grid(column=0, row=2, sticky="n, s, e, w")
-    txt_def = Text(frm_add_edit_inner,
-                    highlightthickness=1, highlightbackground=accent_light)
+    txt_def = Text(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=2, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+
+    lab_img = Label(frm_add_edit_inner, text="Image:", highlightthickness=1, highlightbackground=accent_light)
+    lab_img.grid(column=0, row=3, sticky="n, s, e, w")
+    txt_img = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
+    txt_img.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
     # will add the edit item's stuff into the entry boxes
     if to_edit:
         txt_name.insert(0, selected_item.get_name())
         txt_def.insert("insert", selected_item.get_description())
 
+        if selected_item.get_image():
+            txt_name.insert(0, selected_item.get_image())
+        else:
+            txt_name.insert(0, "No Image")
+
     # drop down for adding items, "e" will give the option that was clicked on
     opm_type = OptionMenu(frm_add_edit_inner, item_type_to_add_or_edit,
-                          "Logic", "Constant", "Variable", "Equation", "Theory", "Method",
+                          "Logic", "Constant", "Variable", "Equation", "Method",
                           command=lambda e: add_edit_item_option_display(e, frm_add_edit_inner, False))
     opm_type.grid(column=0, columnspan=2, row=0, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    Button(frm_add_edit_inner, text="Submit Item", command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win)) \
+    Button(frm_add_edit_inner, text="Submit Item", command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win))\
         .grid(column=2, row=0, sticky="n, s, e, w")
 
     # will set the initial value of the option menu to the correct item type
@@ -879,9 +895,6 @@ def add_edit_item_window(to_edit):
             add_edit_item_option_display("Method", frm_add_edit_inner, to_edit)
         elif it == "Logic":
             item_type_to_add_or_edit.set("Logic")
-        else:
-            item_type_to_add_or_edit.set("Theory")
-            add_edit_item_option_display("Theory", frm_add_edit_inner, to_edit)
 
     else:
         small_win.title("Add")
@@ -910,17 +923,12 @@ def add_edit_item_option_display(type_to_display, container_widget, to_edit):
     elif type_to_display == "Equation":  # when displaying info about a equation
         add_edit_item_equation_display(container_widget, to_edit, selected_item)
 
-    elif type_to_display == "Theory":  # when displaying info about a theory
-        lab_theory = Label(container_widget, text="Theory in limbo and not done.",
-                           relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-        lab_theory.grid(column=0, row=3, columnspan=3, sticky="n, s, e, w")
-
     elif type_to_display == "Method":  # when displaying info about a method
         selected_item_to_add = StringVar()  # create the item type in this fancy way I don't understand
         selected_item_to_add.set("Select an item to add")  # will set the initial value
 
         opm_type = OptionMenu(container_widget, selected_item_to_add,
-                              "Logic", "Constant", "Variable", "Equation", "Theory")
+                              "Logic", "Constant", "Variable", "Equation")
         opm_type.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w")
 
         Button(container_widget, text="Add Step:",
@@ -1084,7 +1092,8 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
             .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
 
         btn_method_item_delete = Button(container_widget, text="Delete this " + type_to_display,
-                                        command=lambda: delete_added_item(container_widget, btn_method_item_delete, type_to_display, True))
+                                        command=lambda: delete_added_item(container_widget, btn_method_item_delete,
+                                                                          type_to_display, True))
         btn_method_item_delete.grid(column=2, row=start_row, sticky="n, s, e, w")
 
         start_row += 1
@@ -1119,10 +1128,6 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
             elif type_to_display == "Equation":
                 add_edit_item_equation_display(container_widget, to_edit, item_to_display)
 
-            elif type_to_display == "Theory":
-                Label(container_widget, text="Theory isn't functional").grid(column=0, columnspan=3, row=start_row,
-                                                                             sticky="n, s, e, w")
-
         else:
             if type_to_display == "Constant":
                 add_edit_item_v_or_c_display("Constant", container_widget, False, item_to_display)
@@ -1130,9 +1135,6 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
                 add_edit_item_v_or_c_display("Variable", container_widget, False, item_to_display)
             elif type_to_display == "Equation":
                 add_edit_item_equation_display(container_widget, False, item_to_display)
-            elif type_to_display == "Theory":
-                Label(container_widget, text="Theory isn't functional").grid(column=0, columnspan=2, row=start_row,
-                                                                             sticky="n, s, e, w")
 
     else:
         print("Please select an item pop-up window would occur here")
@@ -1149,8 +1151,6 @@ def delete_added_item(container_widget, button, type_to_delete, in_meth):
         number_of_children = 12
     elif type_to_delete == "Equation":
         number_of_children = 9
-    elif type_to_delete == "Theory":
-        number_of_children = 7
 
     all_children = container_widget.winfo_children()
 
@@ -1213,7 +1213,6 @@ def item_submit(container_widget, to_edit, top_level_window):
                 elif inner_item.winfo_class() == "Text":
                     full_list_of_txt_input.append(inner_item.get(1.0, "end"))
 
-
     is_special_char_present = False
     is_there_blank_space = False
 
@@ -1223,7 +1222,6 @@ def item_submit(container_widget, to_edit, top_level_window):
 
         if user_input == '' or user_input == '\n' or user_input == ' ':        # will look out for emptiness
             is_there_blank_space = True
-
 
     if is_there_blank_space:
         alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
@@ -1261,8 +1259,7 @@ def item_submit(container_widget, to_edit, top_level_window):
                     list_of_frames.append(item)
 
             for child in list_of_widgets:
-                if last_child.winfo_class() == "Label" and child.winfo_class() == "Button" and last_child.cget(
-                        "text") != "Theory isn't functional":
+                if last_child.winfo_class() == "Label" and child.winfo_class() == "Button":
                     # will keep characters after the ":" then remove the space just before the actual word
                     text = last_child.cget("text").rsplit(":", 1)[1]
                     check_text = text[1:]
@@ -1281,11 +1278,6 @@ def item_submit(container_widget, to_edit, top_level_window):
 
                         list_of_steps.append(item_submit_log_var_const(logic_text))
                         i_entry += 2
-
-                    elif check_text == "Theory":
-                        list_of_steps.append(Theory(outer_list_of_txt_input[i_entry], outer_list_of_txt_input[i_entry + 1],
-                                                    "Equation would go here"))
-                        i_entry += 1
 
                     elif check_text == "Equation":
                         list_of_steps.append(item_submit_equ(outer_list_of_txt_input[i_entry:i_entry + 3],
@@ -1314,7 +1306,7 @@ def item_submit(container_widget, to_edit, top_level_window):
 # will return a logic, variable, or constant depending on the length of list given
 def item_submit_log_var_const(text_list):
     if len(text_list) < 4:
-        return Logic(text_list[0], text_list[1], "")    #-------------------------------------- NEED TO ADD IMAGES TOO
+        return Logic(text_list[0], text_list[1], "")    # -------------------------------------- NEED TO ADD IMAGES TOO
 
     elif len(text_list) == 4:
         return Variable(text_list[0], text_list[2], 0, text_list[3], text_list[1])
@@ -1334,7 +1326,6 @@ def item_submit_equ(outer_text_list, equ_frame_children):
 
         elif item.winfo_class() == "Text":
             equ_frame_txt_box_text.append(item.get(1.0, "end"))
-
 
     equ_last_frame_child = LabelFrame()
     list_of_variables = []
@@ -1449,8 +1440,6 @@ Checkbutton(frm_item_type_checkboxs, text="Constants", variable=search_constants
     .grid(column=2, row=0, sticky="n, s, e, w")
 Checkbutton(frm_item_type_checkboxs, text="Equations", variable=search_equations) \
     .grid(column=0, row=1, sticky="n, s, e, w")
-Checkbutton(frm_item_type_checkboxs, text="Theories", variable=search_theories) \
-    .grid(column=1, row=1, sticky="n, s, e, w")
 Checkbutton(frm_item_type_checkboxs, text="Methods", variable=search_methods) \
     .grid(column=2, row=1, sticky="n, s, e, w")
 
@@ -1539,7 +1528,8 @@ btn_add_item = Button(frm_results, text="Add a new item", command=lambda: add_ed
 btn_add_item.grid(column=1, row=2, sticky="e")
 
 # create the button that will be used to delete more items
-btn_delete_item = Button(frm_results, text="Delete selected item", activeforeground=text_color, command=item_delete_ask_user, state="disabled")
+btn_delete_item = Button(frm_results, text="Delete selected item", activeforeground=text_color,
+                         command=item_delete_ask_user, state="disabled")
 btn_delete_item.grid(column=0, row=2, sticky="w")
 
 # print column titles for easier user understanding
@@ -1601,4 +1591,3 @@ window.mainloop()  # keeps the window open
 # frm_info.update()  # need to call this to get the size of the item
 # print(str(frm_info.winfo_width()))
 # print(str(lab_search.winfo_height()))
-# save_items(test_items)

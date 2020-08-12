@@ -1,8 +1,20 @@
-class Logic:     # just important for get_name and get_description (means its only written in one place)
+from tkinter import *
+
+
+class Logic:
     def __init__(self, name, description, image):  # constructor for class
         self._name = name
         self._description = description
-        self._image = "image info would go here"
+
+        if image:
+            try:
+                self._image = PhotoImage(file=image)
+
+            except:     # this is in case the code cannot find the picture
+                self._image = PhotoImage(file="error.png")
+
+        else:
+            self._image = False
 
     def get_name(self):
         return self._name

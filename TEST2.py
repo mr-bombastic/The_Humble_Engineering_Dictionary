@@ -1,17 +1,32 @@
-import numpy as np
-import matplotlib
-matplotlib.rcParams['text.usetex'] = True
-import matplotlib.pyplot as plt
+from matplotlib import *
+from matplotlib import figure
+from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+from tkinter import *
+
+use('TkAgg')
 
 
-t = np.linspace(0.0, 1.0, 100)
-s = np.cos(4 * np.pi * t) + 2
+def graph(text_to_display, fi, can):
+    text_to_display = entry.get()
+    text_to_display = "$"+text_to_display+"$"
 
-fig, ax = plt.subplots(figsize=(6, 4), tight_layout=True)
-ax.plot(t, s)
+    fi.clear()
+    fi.text(0, 0.5, text_to_display, fontsize=50)  # (x coordinat, y coordinat, text, font size)
+    can.draw()
 
-ax.set_xlabel(r'\textbf{time (s)}')
-ax.set_ylabel('\\textit{Velocity (\N{DEGREE SIGN}/sec)}', fontsize=16)
-ax.set_title(r'\TeX\ is Number $\displaystyle\sum_{n=1}^\infty'
-             r'\frac{-e^{i\pi}}{2^n}$!', fontsize=16, color='r')
-plt.show()
+root = Tk()
+
+text = StringVar()
+entry = Entry(root, textvariable=text)
+entry.pack(expand=True)
+
+fig = figure.Figure()
+
+canvas = FigureCanvasTkAgg(fig, master=root)
+canvas.get_tk_widget().pack()
+canvas._tkcanvas.pack(side=TOP, fill=BOTH, expand=1)
+
+root.bind('<Return>', lambda e: graph(e, fig, canvas))
+
+
+root.mainloop()
