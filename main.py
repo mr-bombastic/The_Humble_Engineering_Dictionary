@@ -13,13 +13,14 @@ from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 use('TkAgg')    # something for displaying equations, not quite sure what it does
 
 # colors and other variables
-color_dark = "#2b2b2b"  # background color
-color_mid = "#383838"  # button background color
-color_light = "#404040"  # frame colors
-accent_dark = "#323232"  # accent color dark
-accent_light = '#949596'  # accent color light
-text_color = "#eaeaea"  # color for text
-relief_style = 'flat'  # type of relief (flat, groove, raised, ridge, solid, sunken)
+color_dark = "#2b2b2b"          # background color
+color_mid = "#383838"           # button background color
+color_light = "#404040"         # frame color
+color_highlight = "#214283"     # highlight text color
+accent_dark = "#323232"         # accent color dark
+accent_light = '#949596'        # accent color light
+text_color = "#eaeaea"          # color for text
+relief_style = 'flat'           # type of relief (flat, groove, raised, ridge, solid, sunken)
 
 spacing_out_x = 10
 spacing_out_y = 5
@@ -33,19 +34,6 @@ previously_altered_widgets = []
 step_num = 0
 selected_item = ""
 search_results = []  # create an array of the results
-
-# test variables ======================================================================================================
-# l_logic = Logic("Logic boi", "some information about logic stuff that is super long and designed to break the ui", "")
-# v_test = Variable("variable boi", "v", None, "rad", "Variable test description.")
-# c_test = Constant("constant boi", "c", 21.69, "m/s", "Constant test description.")
-# e_test = Equation("equation boi", "Equation description testing.", "sin(" + str(v_test.get_symbol()) + "+" +
-#                   str(c_test.get_symbol()) + "^2)", [v_test, c_test])
-# m_test = Method("method boi", "method test description", [l_logic, v_test, c_test, e_test, t_test])
-#
-# e_test.compile_expression()
-#
-# test_items = [l_logic, v_test, c_test, e_test, t_test, m_test]
-# test variables ======================================================================================================
 
 # main window stuff
 window = Tk()  # creates the window
@@ -71,14 +59,24 @@ window.tk_setPalette(background=color_light, foreground=text_color, activeBackgr
 window.option_add("*Button.Background", color_mid)
 window.option_add("*Radiobutton.Background", color_mid)
 window.option_add("*Canvas.Background", color_mid)
+window.option_add("*Text.Background", color_mid)
+window.option_add("*Text.selectBackground", color_highlight)
+window.option_add("*Text.selectForeground", text_color)
 window.option_add("*Entry.Background", color_mid)
-
+window.option_add("*Entry.selectBackground", color_highlight)
+window.option_add("*Entry.selectForeground", text_color)
 window.option_add("*Label.Anchor", "w")  # default label anchor
 
 window.option_add("*relief", 'flat')
 window.option_add("*Button.relief", 'ridge')
 window.option_add("*highlightthickness", 1)
 window.option_add("*Canvas.highlightthickness", 0)
+window.option_add("*Text.highlightthickness", 0)
+
+window.option_add("*Text.Wrap", "word")
+window.option_add("*Text.width", 30)
+window.option_add("*Text.height", 5)
+
 
 # this stuff is for sorting out the resizing of the right column and lower row
 window.grid_columnconfigure(1, weight=1)
@@ -333,12 +331,6 @@ def print_results():
             radb_type.grid(sticky="n, s, e, w", row=r, column=4)
 
         elif isinstance(result, Equation):  # when displaying info about a equation
-            # radb_equ = Radiobutton(frm_results_inner, text=str(result.get_equation_normal()),
-            #                        activebackground=color_mid, activeforeground=text_color, borderwidth=0,
-            #                        selectcolor=color_mid, indicatoron=False)
-            # radb_equ.bind("<Button-1>", callback_get_widget_row)
-            # radb_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
-
             frm_equ = Frame(frm_results_inner, bg=color_mid)
             display_info_expression(result.get_equation_latex(), frm_equ)
             frm_equ.bind("<Button-1>", callback_get_widget_row)
@@ -500,8 +492,6 @@ def display_info_equ(equ, row):
 
 # will nicely display an expression (must be given the string not the equ itself plus should be in its own frame)
 def display_info_expression(string, container_widget):
-    container_widget_children = container_widget.winfo_children()
-
     fig = figure.Figure()   # create the figure
     fig.set_facecolor(container_widget.cget("bg"))  # set the background color properly
     text = "$"+string+"$"   # reformat the text so it has the correct syntax
@@ -518,7 +508,6 @@ def display_info_expression(string, container_widget):
     width = bb.width
     height = bb.height
     canv.get_tk_widget().configure(height=height+10, width=width+10)
-    print(container_widget.winfo_children())
 
 
 # used to update the background color (facecolor) of the expression. Just give it the widget canvas w/ fig is in
@@ -547,36 +536,40 @@ def item_to_string(item):
     item_type = get_item_type(item)
 
     if item_type == "Variable":  # when displaying info about a variable
-        item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_symbol()) + '&' + str(item.get_units()) + '&' + str(item.get_value()))
+        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' + str(item.get_units()))
 
     elif item_type == "Constant":  # when displaying info about a constant
-        item_string = str(
-            "\n" + str(item.get_name()) + '&' + str(item.get_description()) + '&' + str(item.get_symbol()) +
-            '&' + str(item.get_units()) + '&' + str(item.get_value()))
+        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' + str(item.get_value()) +
+                          '&' + str(item.get_units()))
 
     elif item_type == "Equation":  # when displaying info about a equation
-        item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_equation_normal()))
+        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                          str(item.get_image_location()) + '&' + str(item.get_equation_latex()))
 
         for var in item.get_all_variables():
-            item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "")
+            item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "", 1)
 
         item_string += "&end:Equation"
 
     elif item_type == "Method":  # when displaying info about a method
-        item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()))
+        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                          str(item.get_image_location()))
 
         for step in item.get_steps():
-            item_string += "&type:" + str(get_item_type(step)) + '&' + item_to_string(step).replace("\n", "")
+            item_string += "&type:" + str(get_item_type(step)) + '&' + item_to_string(step).replace("\n", "", 1)
 
         item_string += "&end:Method"
 
     elif item_type == "Logic":  # when displaying logic info
-        item_string = str("\n" + str(item.get_name()) + '&' + str(item.get_description()) + '&' + str(item.get_image()))
+        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                          str(item.get_image_location()))
 
     else:
         return False
+
+    item_string = "\n" + item_string.replace("\\", "\\\\")
 
     return item_string
 
@@ -600,18 +593,26 @@ def string_to_item_conversion_logic(archived_line, item_type):
     item = False  # just in case nothing is written to this it will return a 'False' error message
 
     # splits the string and removes \n and puts this array into split_string
-    split_line = str(archived_line).replace("\n", "")
+    split_line = str(archived_line).replace("\\\\", "\\")
+    split_line = split_line.replace("\n", "")
     split_line = split_line.split('&')
 
     # checks to make sure not to run the first line with description info through the item creator
     if split_line[0] != "_=^=_" and split_line[0] != "":
 
         # will decide and create the correct item type
-        if item_type == "Variable":  # when displaying info about a variable
+        # len() portion ensures split_line array is the correct length which would indicate correct storage formatting
+        if item_type == "Logic" and len(split_line) == 3:  # when displaying logic info
+            item = Logic(split_line[0], split_line[1], split_line[2])
+
+        elif item_type == "Variable" and len(split_line) == 5:  # when displaying info about a variable
             item = Variable(split_line[0], split_line[1], split_line[2], split_line[3], split_line[4])
-        elif item_type == "Constant":  # when displaying info about a constant
+
+        elif item_type == "Constant" and len(split_line) == 6:  # when displaying info about a constant
             item = Constant(split_line[0], split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
-        elif item_type == "Equation":  # when displaying info about a equation
+
+        # >= 10 because name, description, image, expression, type identifier, and 1 variable (shorter than constants)
+        elif item_type == "Equation" and len(split_line) >= 10:  # when displaying info about a equation
             list_of_var_con = []  # will hold the list of variables and constants the equation will have
 
             # will look at whether there are variables/constants in the string
@@ -632,9 +633,10 @@ def string_to_item_conversion_logic(archived_line, item_type):
                     split_line[i] = ""
 
             # will create a new equation and add it to the list of items
-            item = Equation(split_line[0], split_line[1], split_line[2],
-                            split_line[3].replace("\\\\", "\\"), list_of_var_con)
-        elif item_type == "Method":  # when displaying info about a method
+            item = Equation(split_line[0], split_line[1], split_line[2], split_line[3], list_of_var_con)
+
+        # >= 7 because name, description, image, type identifier, and 1 logic (shortest item type)
+        elif item_type == "Method" and len(split_line) >= 7:  # when displaying info about a method
             list_of_steps = []
             for i in range(0, len(split_line)):
                 inner_string = ""
@@ -714,8 +716,6 @@ def string_to_item_conversion_logic(archived_line, item_type):
 
             # will combine everything together into a method item and add it to the list
             item = Method(split_line[0], split_line[1], split_line[2], list_of_steps)
-        elif item_type == "Logic":  # when displaying logic info
-            item = Logic(split_line[0], split_line[1], split_line[2])
 
     return item  # return the item
 
@@ -850,7 +850,8 @@ def add_edit_item_window(to_edit):
                           command=lambda e: add_edit_item_option_display(e, frm_add_edit_inner, False))
     opm_type.grid(column=0, columnspan=2, row=0, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    Button(frm_add_edit_inner, text="Submit Item", command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win)) \
+    Button(frm_add_edit_inner, text="Submit Item",
+           command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win)) \
         .grid(column=2, row=0, sticky="n, s, e, w")
 
     lab_name = Label(frm_add_edit_inner, text="Name:", highlightthickness=1, highlightbackground=accent_light)
@@ -858,7 +859,7 @@ def add_edit_item_window(to_edit):
     txt_name = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_name.grid(column=1, columnspan=2, row=1, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    lab_def = Label(frm_add_edit_inner, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
+    lab_def = Label(frm_add_edit_inner, text="Description:", highlightthickness=1, highlightbackground=accent_light)
     lab_def.grid(column=0, row=2, sticky="n, s, e, w")
     txt_def = Text(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=2, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
@@ -1065,7 +1066,7 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
 
     start_row += 1
 
-    lab_def = Label(container_widget, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
+    lab_def = Label(container_widget, text="Description:", highlightthickness=1, highlightbackground=accent_light)
     lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
     txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
@@ -1108,7 +1109,7 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
 
         start_row += 1
 
-        lab_def = Label(container_widget, text="Definition:", highlightthickness=1, highlightbackground=accent_light)
+        lab_def = Label(container_widget, text="Description:", highlightthickness=1, highlightbackground=accent_light)
         lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
         txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
         txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
@@ -1297,7 +1298,8 @@ def item_submit(container_widget, to_edit, top_level_window):
 
                 last_child = child
 
-            item_to_save = Method(outer_list_of_txt_input[0], outer_list_of_txt_input[1], list_of_steps)
+            item_to_save = Method(outer_list_of_txt_input[0], outer_list_of_txt_input[1], outer_list_of_txt_input[2],
+                                  list_of_steps)
 
         # checks to see if there is a repeat of the item
         if check_for_repeats(item_to_save):
@@ -1344,15 +1346,15 @@ def item_submit_equ(outer_text_list, equ_frame_children):
     for child in equ_frame_children:
         if equ_last_frame_child.winfo_class() == "Label" and child.winfo_class() == "Button":
             if equ_last_frame_child.cget("text") == "Variable:":
-                list = equ_frame_txt_box_text[i_entry:i_entry + 4]
-                list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(list))
+                text_list = equ_frame_txt_box_text[i_entry:i_entry + 4]
+                text_list.insert(2, None)
+                list_of_variables.append(item_submit_log_var_const(text_list))
                 i_entry += 4
 
             elif child.cget("text") == "Constant:":
-                list = equ_frame_txt_box_text[i_entry:i_entry + 5]
-                list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(list))
+                text_list = equ_frame_txt_box_text[i_entry:i_entry + 5]
+                text_list.insert(2, None)
+                list_of_variables.append(item_submit_log_var_const(text_list))
                 i_entry += 5
 
         equ_last_frame_child = child
@@ -1485,8 +1487,7 @@ frm_input = LabelFrame(frm_left, text="What do you want to search for?",
 frm_input.grid(column=1, row=1, sticky="n, s, e, w", pady=spacing_out_y * 2)
 
 # text box to get user input
-txt_search = Entry(frm_input, highlightthickness=1, highlightbackground=accent_light, selectbackground="green",
-                   selectforeground="red")
+txt_search = Entry(frm_input, highlightthickness=1, highlightbackground=accent_light)
 txt_search.grid(column=0, columnspan=2, row=1, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 txt_search.bind("<Return>", lambda x: search())  # allows user to press enter to search
 

@@ -5,6 +5,7 @@ class Logic:
     def __init__(self, name, description, image):  # constructor for class
         self._name = name
         self._description = description
+        self._image_local = image
 
         if image:
             try:
@@ -24,3 +25,6 @@ class Logic:
 
     def get_image(self):
         return self._image
+
+    def get_image_location(self):
+        return self._image_local
