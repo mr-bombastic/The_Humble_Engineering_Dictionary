@@ -2,8 +2,8 @@ from Classes.variable import *  # will import all classes in that document
 
 
 class Constant(Variable):
-    def __init__(self, name, symbol, value, units, description, image):  # constructor for class
-        super(Constant, self).__init__(name, symbol, units, description, image)
+    def __init__(self, name, description, image, symbol, value, units):  # constructor for class
+        super().__init__(name, symbol, units, description, image)
 
         self._value = value
 

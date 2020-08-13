@@ -1,1 +1,6 @@
 _=^=_& name & description & symbol & unit & value
+Universal Gas Constant&\bar{R}&This value indicates a proportionality between energy and temperature per mole.
+&&8.314462
+
+
+PROBLEM WITH NEW LINES AT THE END OF STUFF FUCKING THINGS UP

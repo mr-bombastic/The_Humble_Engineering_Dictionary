@@ -3,7 +3,7 @@ from Classes.equation import *  # will import all classes in that document
 
 class Method(Logic):
     def __init__(self, name, description, steps, image):  # constructor for class
-        super(Logic, self).__init__(name, description, image)
+        super().__init__(name, description, image)
 
         self._steps = steps
 
