@@ -1,5 +1,6 @@
 from tkinter import *
 import os
+from PIL import Image
 import tkinter.font as tkfont
 from tkinter import messagebox
 from Classes.logic import Logic
@@ -473,21 +474,71 @@ def display_info_equ(equ, row):
     return row  # return the row so the above code knows where to start up again
 
 
-# converts latex into an image which is then placed onto a canvas, this is then RETURNED for the user to place
+# returns a canvas with the desired image within it
+# it will create and save an image if one has not previously been saved
 def display_info_latex(string, container_widget, widget_color):
     latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
     file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
 
-    if not os.path.isfile(file_name):
-        fig = figure.Figure()  # create the figure
+    if not os.path.isfile(file_name):   # when a file hasn't already been created
+        fig = figure.Figure(dpi=120)    # create the figure
         fig.text(0, 0.5, latex_text, color=text_color)  # (x coordinat, y coordinat, text, font size)
         fig.savefig(file_name, bbox_inches='tight', transparent=True)
         fig.clf()
 
+        im = Image.open(file_name)
+
+        # Size of the image in pixels. Return tuple
+        width, height = im.size
+
+        crop_top = 0
+        crop_bot = 0
+        crop_left = 0
+        crop_right = 0
+
+        # these loops will filter though the image to find when a pixel has some color in it
+        # this will help to define how the image will be cropped to be as small as possible
+        for w in range(0, width):
+            for h in range(0, height):
+                if im.getpixel((w, h)) != (255, 255, 255, 0):
+                    crop_left = w-1
+                    break
+            else:
+                continue
+            break
+        for w in range(width - 1, 0, -1):
+            for h in range(height - 1, 0, -1):
+                if im.getpixel((w, h)) != (255, 255, 255, 0):
+                    crop_right = w + 2
+                    break
+            else:
+                continue
+            break
+        for h in range(0, height):
+            for w in range(0, width):
+                if im.getpixel((w, h)) != (255, 255, 255, 0):
+                    crop_top = h
+                    break
+            else:
+                continue
+            break
+        for h in range(height - 1, 0, -1):
+            for w in range(width - 1, 0, -1):
+                if im.getpixel((w, h)) != (255, 255, 255, 0):
+                    crop_bot = h + 2
+                    break
+            else:
+                continue
+            break
+
+        # crop the image based on the dimensions decided above
+        im_crop = im.crop((crop_left, crop_top, crop_right, crop_bot))
+        im_crop.save(file_name)  # overwrite previous image
+
     image = PhotoImage(file=file_name)
     canv_image = Canvas(container_widget, width=image.width(), height=image.height(),
                         bg=widget_color, highlightbackground=widget_color)
-    canv_image.create_image(0, 0, anchor="nw", image=image)
+    canv_image.create_image(2, 2, anchor="nw", image=image)
     canv_image.image = image
 
     return canv_image
