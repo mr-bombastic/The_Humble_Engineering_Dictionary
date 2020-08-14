@@ -382,6 +382,7 @@ def display_info(r):
     if selected_item.get_image_location() != "No image association":
         canv_image = Canvas(frm_info_inner, bg=color_light)
         canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
+        canv_image.image = selected_item.get_image()
         canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
         #canv_image.configure(width=500)
 
