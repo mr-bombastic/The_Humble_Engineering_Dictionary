@@ -1,11 +1,16 @@
 from tkinter import *
-from Classes.variable import *
+window = Tk()
 
-root = Tk()
-canvas = Canvas(root, width = 300, height = 300)
-canvas.pack()
+def button():
+    image = PhotoImage(file="Dictionary/all_latex_images/bar{R}.png")
+    lbl = Label(window, image=image)
+    lbl.image = image
+    lbl.pack()
 
-L = Variable("name", "desciption", "Dictionary\logic\\red.png", "r", "s/m")
+    canv_image = Canvas(window, width=image.width(), height=image.height(), bg="green")
+    canv_image.create_image(0.5, 0.5, anchor="nw", image=image)
+    canv_image.pack()
 
-canvas.create_image(20,20, anchor=NW, image=L.get_image())
-mainloop()
+Button(window, command=button, text="press").pack()
+
+window.mainloop()

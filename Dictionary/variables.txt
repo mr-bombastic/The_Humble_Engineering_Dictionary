@@ -1,0 +1,2 @@
+_=^=_& name & description & image name & symbol & units
+Stress&The ammount of force exerted onto a particular area.&redggg.png&§sigma&Pa

@@ -1,16 +1,16 @@
 from tkinter import *
+import os
 import tkinter.font as tkfont
 from tkinter import messagebox
-from Classes.logic import *
-from Classes.variable import *
-from Classes.constant import *
-from Classes.equation import *
-from Classes.method import *
+from Classes.logic import Logic
+from Classes.variable import Variable
+from Classes.constant import Constant
+from Classes.equation import Equation
+from Classes.method import Method
 from matplotlib import *
 from matplotlib import figure
-from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 
-use('TkAgg')    # something for displaying equations, not quite sure what it does
+use('TkAgg')    # something for matplotlib to display equations, not quite sure what it does
 
 # colors and other variables
 color_dark = "#2b2b2b"          # background color
@@ -59,6 +59,7 @@ window.tk_setPalette(background=color_light, foreground=text_color, activeBackgr
 window.option_add("*Button.Background", color_mid)
 window.option_add("*Radiobutton.Background", color_mid)
 window.option_add("*Canvas.Background", color_mid)
+window.option_add("*Canvas.highlightBackground", color_mid)
 window.option_add("*Text.Background", color_mid)
 window.option_add("*Text.selectBackground", color_highlight)
 window.option_add("*Text.selectForeground", text_color)
@@ -111,15 +112,15 @@ def print_all():
     search_results.clear()  # removes all items from search results
 
     if search_variables.get() == 1:  # when the user whats to search through variables
-        search_results.extend(string_to_item(get_file_lines("Dictionary/variables/variables.txt"), "Variable"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/variables.txt"), "Variable"))
     if search_constants.get() == 1:  # when the user whats to search through constants
-        search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/constants.txt"), "Constant"))
     if search_equations.get() == 1:  # when the user whats to search through equations
-        search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/equations.txt"), "Equation"))
     if search_logic.get() == 1:  # when the user whats to search through logic
-        search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
-    if search_methods.get() == 1:  # when the user whats to search through methods
-        search_results.extend(string_to_item(get_file_lines("Dictionary/methods/methods.txt"), "Method"))
+        search_results.extend(string_to_item(get_file_lines("Dictionary/logic.txt"), "Logic"))
+    if search_methods.get() == 1:  # when the user whats to search through all_images
+        search_results.extend(string_to_item(get_file_lines("Dictionary/methods.txt"), "Method"))
 
     print_results()
 
@@ -132,15 +133,15 @@ def search():
         search_results.clear()  # removes all items from search results
 
         if search_variables.get() == 1:  # when the user whats to search through variables
-            search_results.extend(string_to_item(get_file_lines("Dictionary/variables/variables.txt"), "Variable"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/variables.txt"), "Variable"))
         if search_constants.get() == 1:  # when the user whats to search through constants
-            search_results.extend(string_to_item(get_file_lines("Dictionary/constants/constants.txt"), "Constant"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/constants.txt"), "Constant"))
         if search_equations.get() == 1:  # when the user whats to search through equations
-            search_results.extend(string_to_item(get_file_lines("Dictionary/equations/equations.txt"), "Equation"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/equations.txt"), "Equation"))
         if search_logic.get() == 1:  # when the user whats to search through logic
-            search_results.extend(string_to_item(get_file_lines("Dictionary/logic/logic.txt"), "Logic"))
-        if search_methods.get() == 1:  # when the user whats to search through methods
-            search_results.extend(string_to_item(get_file_lines("Dictionary/methods/methods.txt"), "Method"))
+            search_results.extend(string_to_item(get_file_lines("Dictionary/logic.txt"), "Logic"))
+        if search_methods.get() == 1:  # when the user whats to search through all_images
+            search_results.extend(string_to_item(get_file_lines("Dictionary/methods.txt"), "Method"))
 
         search_in_list(txt_search.get(), search_results)
 
@@ -257,19 +258,19 @@ def callback_get_widget_row(event):
     # if something was clicked before this will reset the colors so its not highlighted
     if previously_altered_widgets != "":
         for widget in previously_altered_widgets:
-            if widget.winfo_class() != "Frame":
+            if widget.winfo_class() != "Canvas":
                 widget.configure(activebackground=color_mid, selectcolor=color_mid)
             else:
-                widget.configure(bg=color_mid)
+                widget.configure(bg=color_mid, highlightbackground=color_mid)
                 # display_info_expression_update_color(widget)
 
     # saves an array of all the widgets in the row
     widgets_to_alter = frm_results_inner.grid_slaves(row=r)
     for widget in widgets_to_alter:
-        if widget.winfo_class() != "Frame":
+        if widget.winfo_class() != "Canvas":
             widget.configure(activebackground=color_dark, selectcolor=color_dark)  # changes widget color to highlight
         else:
-            widget.configure(bg=color_dark)
+            widget.configure(bg=color_dark, highlightbackground=color_dark)
             # display_info_expression_update_color(widget)
 
     previously_altered_widgets = widgets_to_alter  # saves array of widgets for if statement seen above
@@ -288,53 +289,39 @@ def print_results():
         radb_name.bind("<Button-1>", callback_get_widget_row)
         radb_name.grid(sticky="n, s, e, w", row=r, column=0)
 
+        result_type = get_item_type(result)
+
         # will set the specific formatting based on the item type
-        if isinstance(result, Variable):  # when displaying info about a variable
-            radb_sym = Radiobutton(frm_results_inner, text=str(result.get_symbol()), activebackground=color_mid,
-                                   activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
-            radb_sym.bind("<Button-1>", callback_get_widget_row)
-            radb_sym.grid(sticky="n, s, e, w", row=r, column=1)
+        if result_type == "Variable" or result_type == "Constant":  # when displaying info about a variable/constant
+            canv_equ = display_info_latex(result.get_symbol(), frm_results_inner, color_mid)
+            canv_equ.bind("<Button-1>", callback_get_widget_row)
+            canv_equ.grid(sticky="n, s, e, w", row=r, column=1)
 
-            radb_unit = Radiobutton(frm_results_inner, text=str(result.get_units()), activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_unit.bind("<Button-1>", callback_get_widget_row)
-            radb_unit.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
+            canv_equ = display_info_latex(result.get_units(), frm_results_inner, color_mid)
+            canv_equ.bind("<Button-1>", callback_get_widget_row)
 
-            radb_type = Radiobutton(frm_results_inner, text="Variable", activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
+            if result_type == "Constant":
+                radb_val = Radiobutton(frm_results_inner, text=str(result.get_value()), activebackground=color_mid,
+                                       activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
+                                       indicatoron=False)
+                radb_val.bind("<Button-1>", callback_get_widget_row)
+                radb_val.grid(sticky="n, s, e, w", row=r, column=2)
 
-        elif isinstance(result, Constant):  # when displaying info about a constant
-            radb_sym = Radiobutton(frm_results_inner, text=str(result.get_symbol()), activebackground=color_mid,
-                                   activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
-            radb_sym.bind("<Button-1>", callback_get_widget_row)
-            radb_sym.grid(sticky="n, s, e, w", row=r, column=1)
+                canv_equ.grid(sticky="n, s, e, w", row=r, column=3)
 
-            radb_val = Radiobutton(frm_results_inner, text=str(result.get_value()), activebackground=color_mid,
-                                   activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
-            radb_val.bind("<Button-1>", callback_get_widget_row)
-            radb_val.grid(sticky="n, s, e, w", row=r, column=2)
+            else:
+                canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
 
-            radb_unit = Radiobutton(frm_results_inner, text=str(result.get_units()), activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_unit.bind("<Button-1>", callback_get_widget_row)
-            radb_unit.grid(sticky="n, s, e, w", row=r, column=3)
-
-            radb_type = Radiobutton(frm_results_inner, text="Constant", activebackground=color_mid,
+            radb_type = Radiobutton(frm_results_inner, text=result_type, activebackground=color_mid,
                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                     indicatoron=False)
             radb_type.bind("<Button-1>", callback_get_widget_row)
             radb_type.grid(sticky="n, s, e, w", row=r, column=4)
 
-        elif isinstance(result, Equation):  # when displaying info about a equation
-            frm_equ = Frame(frm_results_inner, bg=color_mid)
-            display_info_expression(result.get_equation_latex(), frm_equ)
-            frm_equ.bind("<Button-1>", callback_get_widget_row)
-            frm_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+        elif result_type == "Equation":  # when displaying info about an equation
+            canv_equ = display_info_latex(result.get_equation_latex(), frm_results_inner, color_mid)
+            canv_equ.bind("<Button-1>", callback_get_widget_row)
+            canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
             radb_type = Radiobutton(frm_results_inner, text="Equation", activebackground=color_mid,
                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
@@ -342,18 +329,12 @@ def print_results():
             radb_type.bind("<Button-1>", callback_get_widget_row)
             radb_type.grid(sticky="n, s, e, w", row=r, column=4)
 
-        elif isinstance(result, Method):  # when displaying info about a method
-            radb_descr = Radiobutton(frm_results_inner, text="Number of steps:", activebackground=color_mid,
-                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                     indicatoron=False)
+        elif result_type == "Method":  # when displaying info about a method
+            radb_descr = Radiobutton(frm_results_inner, text="Number of steps:" + result.get_num_steps(),
+                                     activebackground=color_mid, activeforeground=text_color, borderwidth=0,
+                                     selectcolor=color_mid, indicatoron=False)
             radb_descr.bind("<Button-1>", callback_get_widget_row)
-            radb_descr.grid(sticky="n, s, e, w", row=r, column=1, columnspan=2)
-
-            radb_num_step = Radiobutton(frm_results_inner, text=str(result.get_num_steps()), activebackground=color_mid,
-                                        activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                        indicatoron=False)
-            radb_num_step.bind("<Button-1>", callback_get_widget_row)
-            radb_num_step.grid(sticky="n, s, e, w", row=r, column=3)
+            radb_descr.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
             radb_type = Radiobutton(frm_results_inner, text="Method", activebackground=color_mid,
                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
@@ -361,7 +342,7 @@ def print_results():
             radb_type.bind("<Button-1>", callback_get_widget_row)
             radb_type.grid(sticky="n, s, e, w", row=r, column=4)
 
-        elif isinstance(result, Logic):  # when displaying logic info
+        elif result_type == "Logic":  # when displaying logic info
             radb_log = Radiobutton(frm_results_inner, text="Click for more info", activebackground=color_mid,
                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
             radb_log.bind("<Button-1>", callback_get_widget_row)
@@ -388,43 +369,46 @@ def display_info(r):
     selected_item = search_results[r]  # get the search_result from the corresponding row
 
     # Name of the item
-    Label(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center',
-          font=("TkDefaultFont", fontsize + 15, "bold")) \
-        .grid(row=0, rowspan=2, column=0, columnspan=3, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
+    Message(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center', width=m_len*30,
+          font=("TkDefaultFont", fontsize + 10, "bold")) \
+        .grid(row=0, rowspan=2, column=0, columnspan=2, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
 
     # Button to edit item
     Button(frm_info_inner, text="Edit Item", command=lambda: add_edit_item_window(True),
-           activeforeground=text_color).grid(row=0, column=3, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
+           activeforeground=text_color).grid(row=0, column=2, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
 
     item_type = get_item_type(selected_item)  # get the type of item being displayed
 
-    canv_image = Canvas(frm_info_inner, bg=color_light)
-    canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
-    canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
+    if selected_item.get_image_location() != "No image association":
+        canv_image = Canvas(frm_info_inner, bg=color_light)
+        canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
+        canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
+        #canv_image.configure(width=500)
 
-    canv_image.configure(width=canv_image)
+        # trying to fix the width of the canvas so that the images will fit properly
+
     r = 3  # set the row to an initial value
 
     if item_type == "Logic":  # when displaying info about logic
-        Label(frm_info_inner, text="Logic").grid(padx=spacing_out_x * 2, sticky="e", row=1, column=3)
+        Label(frm_info_inner, text="Logic").grid(padx=spacing_out_x * 2, sticky="e", row=1, column=2)
 
     elif item_type == "Variable":  # when displaying info about a variable
-        Label(frm_info_inner, text="Variable").grid(padx=spacing_out_x * 1.1, sticky="e", row=1, column=3)
+        Label(frm_info_inner, text="Variable").grid(padx=spacing_out_x * 1.1, sticky="e", row=1, column=2)
         display_info_var_const(selected_item, r)
         r += 1
 
     elif item_type == "Constant":  # when displaying info about a constant
-        Label(frm_info_inner, text="Constant").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=3)
+        Label(frm_info_inner, text="Constant").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=2)
         display_info_var_const(selected_item, r)
         r += 1
 
     elif item_type == "Equation":  # when displaying info about a equation
-        Label(frm_info_inner, text="Equation").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=3)
+        Label(frm_info_inner, text="Equation").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=2)
         display_info_equ(selected_item, r+1)
 
     elif item_type == "Method":  # when displaying info about a method
         Label(frm_info_inner, text="Method").grid(padx=spacing_out_x * 1.4, pady=spacing_out_y, sticky="e", row=1,
-                                                  column=3)
+                                                  column=2)
         Label(frm_info_inner, text=selected_item.get_description()).grid(row=r, column=0, columnspan=4,
                                                                          sticky="n, s, e, w")
 
@@ -451,19 +435,17 @@ def display_info(r):
                 .grid(row=r, column=0, columnspan=4, pady=spacing_out_y)
             r += 1
 
-    # put item description at the end for all these values as it will make the most sence
-    # methods have their descriptions placed before all the steps
+    # put item description at the end for all these values as it will make the most sense
+    # all_images have their descriptions placed before all the steps
     if item_type != "Method":
-        Label(frm_info_inner, text=selected_item.get_description(), bg=color_light).grid(row=r, column=0, columnspan=4,
-                                                                                         sticky="n, s, e, w")
+        Message(frm_info_inner, text=selected_item.get_description(), bg=color_light, anchor="w", width=m_len*30)\
+            .grid(row=r, column=0, columnspan=4, sticky="n, s, e, w")
 
 
 # used to display information for equations. was taken out just to reduce repetition
 # does NOT display the name or description of the equation
 def display_info_equ(equ, row):
-    frm_expres = Frame(frm_info_inner, bg=color_light)
-    frm_expres.grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
-    display_info_expression(equ.get_equation_latex(), frm_expres)
+    display_info_latex(equ.get_equation_latex(), frm_info_inner).grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
 
     row += 1
 
@@ -490,45 +472,54 @@ def display_info_equ(equ, row):
     return row  # return the row so the above code knows where to start up again
 
 
-# will nicely display an expression (must be given the string not the equ itself plus should be in its own frame)
-def display_info_expression(string, container_widget):
-    fig = figure.Figure()   # create the figure
-    fig.set_facecolor(container_widget.cget("bg"))  # set the background color properly
-    text = "$"+string+"$"   # reformat the text so it has the correct syntax
+# converts latex into an image which is then placed onto a canvas, this is then RETURNED for the user to place
+def display_info_latex(string, container_widget, widget_color):
+    latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
+    file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
 
-    # create the canvas stuff that will hold the figure (not quite sure how this works)
-    canv = FigureCanvasTkAgg(fig, master=container_widget)
-    canv.get_tk_widget().grid(row=0, column=0)
+    if not os.path.isfile(file_name):
+        fig = figure.Figure()  # create the figure
+        fig.text(0, 0.5, latex_text, color=text_color)  # (x coordinat, y coordinat, text, font size)
+        fig.savefig(file_name, bbox_inches='tight', transparent=True)
+        fig.clf()
 
-    # put the text into the figure
-    t = fig.text(0, 0.5, text, color=text_color)  # (x coordinat, y coordinat, text, font size)
-    canv.draw()
+    image = PhotoImage(file=file_name)
+    canv_image = Canvas(container_widget, width=image.width(), height=image.height(),
+                        bg=widget_color, highlightbackground=widget_color)
+    canv_image.create_image(0, 0, anchor="nw", image=image)
+    canv_image.image = image
 
-    bb = t.get_window_extent(renderer=fig.canvas.get_renderer())
-    width = bb.width
-    height = bb.height
-    canv.get_tk_widget().configure(height=height+10, width=width+10)
+    return canv_image
 
 
-# used to update the background color (facecolor) of the expression. Just give it the widget canvas w/ fig is in
-def display_info_expression_update_color(container_widget):
-    canv = container_widget.winfo_children
-    fig = canv.figure
-    fig.set_facecolor(container_widget.cget("bg"))
+# will remove any characters that are not allowed to be in a name
+def remove_bad_chars(string):
+    bad_chars = '\/:*?"<>|'
+
+    for char in bad_chars:
+        string = string.replace(char, '')
+
+    return string
 
 
 # used to display information for variables and constants. was taken out just to reduce repetition
 # does NOT display names or descriptions
 def display_info_var_const(var_or_const, row):
-    Label(frm_info_inner, text="Symbol: " + var_or_const.get_symbol()) \
-        .grid(row=row, column=0)
+    frm_attribute = Frame(frm_info_inner)
+    frm_attribute.grid(row=row, column=0, columnspan=3, sticky="n, s, e, w")
+    frm_attribute.grid_columnconfigure(1, weight=1)
+    frm_attribute.grid_columnconfigure(3, weight=1)
+    frm_attribute.grid_columnconfigure(5, weight=1)
 
-    if get_item_type(var_or_const) == "Constant":  # for a constant specifically
-        Label(frm_info_inner, text="Value: " + var_or_const.get_value()) \
-            .grid(row=row, column=1)
+    Label(frm_attribute, text="Symbol: ").grid(row=0, column=0, sticky="e")
+    display_info_latex(var_or_const.get_symbol(), frm_attribute, color_light).grid(row=0, column=1, sticky="w")
 
-    Label(frm_info_inner, text="Units: " + var_or_const.get_units()) \
-        .grid(row=row, column=2)
+    if get_item_type(var_or_const) == "Constant":       # for a constant specifically
+        Label(frm_attribute, text="Value: ").grid(row=0, column=2, sticky="e")
+        Entry(frm_attribute, text=var_or_const.get_value()).grid(row=0, column=3)
+
+    Label(frm_attribute, text="Units: ").grid(row=0, column=4, sticky="e")
+    display_info_latex(var_or_const.get_units(), frm_attribute, color_light).grid(row=0, column=5, sticky="e")
 
 
 # get the corresponding string of each item type
@@ -537,12 +528,13 @@ def item_to_string(item):
 
     if item_type == "Variable":  # when displaying info about a variable
         item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' + str(item.get_units()))
+                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' +
+                          str(item.get_units()))
 
     elif item_type == "Constant":  # when displaying info about a constant
         item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' + str(item.get_value()) +
-                          '&' + str(item.get_units()))
+                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' +
+                          str(item.get_value()) + '&' + str(item.get_units()))
 
     elif item_type == "Equation":  # when displaying info about a equation
         item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
@@ -569,7 +561,7 @@ def item_to_string(item):
     else:
         return False
 
-    item_string = "\n" + item_string.replace("\\", "\\\\")
+    item_string = "\n" + item_string.replace("\\", "§")
 
     return item_string
 
@@ -593,7 +585,7 @@ def string_to_item_conversion_logic(archived_line, item_type):
     item = False  # just in case nothing is written to this it will return a 'False' error message
 
     # splits the string and removes \n and puts this array into split_string
-    split_line = str(archived_line).replace("\\\\", "\\")
+    split_line = str(archived_line).replace("§", "\\")
     split_line = split_line.replace("\n", "")
     split_line = split_line.split('&')
 
@@ -722,17 +714,19 @@ def string_to_item_conversion_logic(archived_line, item_type):
 
 # get correct file directory for item
 def get_item_file_directory(item):
+    item_type = get_item_type(item)
+
     # will decide the correct file directory for the item
-    if isinstance(item, Variable):  # when displaying info about a variable
-        file_directory = "Dictionary/variables/variables.txt"
-    elif isinstance(item, Constant):  # when displaying info about a constant
-        file_directory = "Dictionary/constants/constants.txt"
-    elif isinstance(item, Equation):  # when displaying info about a equation
-        file_directory = "Dictionary/equations/equations.txt"
-    elif isinstance(item, Method):  # when displaying info about a method
-        file_directory = "Dictionary/methods/methods.txt"
-    elif isinstance(item, Logic):  # when displaying logic info
-        file_directory = "Dictionary/logic/logic.txt"
+    if item_type == "Variable":  # when displaying info about a variable
+        file_directory = "Dictionary/variables.txt"
+    elif item_type == "Constant":  # when displaying info about a constant
+        file_directory = "Dictionary/constants.txt"
+    elif item_type == "Equation":  # when displaying info about a equation
+        file_directory = "Dictionary/equations.txt"
+    elif item_type == "Method":  # when displaying info about a method
+        file_directory = "Dictionary/methods.txt"
+    elif item_type == "Logic":  # when displaying logic info
+        file_directory = "Dictionary/logic.txt"
     else:
         file_directory = "Dictionary/lost_or_deleted_items/lost_or_deleted_items.txt"
     return file_directory
@@ -771,16 +765,16 @@ def file_existence_filter(target_file):
     except FileNotFoundError:
         file = open(target_file, 'w')  # open file
 
-        if target_file == "Dictionary/variables/variables.txt":  # when writing info for a variable
-            file.write("_=^=_& name & description & symbol & unit & last saved value")
-        elif target_file == "Dictionary/constants/constants.txt":  # when writing info for a constant
-            file.write("_=^=_& name & description & symbol & unit & value")
-        elif target_file == "Dictionary/equations/equations.txt":  # when writing info for a equation
-            file.write("_=^=_& name & description & equation in latex form & list of accompanying items")
-        elif target_file == "Dictionary/logic/logic.txt":  # when writing info for a logic
-            file.write("_=^=_& name & description & image")
-        elif target_file == "Dictionary/methods/methods.txt":  # when writing info for method
-            file.write("_=^=_& name & description & steps listed as various items")
+        if target_file == "Dictionary/logic.txt":  # when writing info for a logic
+            file.write("_=^=_& name & description & image name")
+        elif target_file == "Dictionary/variables.txt":  # when writing info for a variable
+            file.write("_=^=_& name & description & image name & symbol & units")
+        elif target_file == "Dictionary/constants.txt":  # when writing info for a constant
+            file.write("_=^=_& name & description & image name & symbol & value & units")
+        elif target_file == "Dictionary/equations.txt":  # when writing info for a equation
+            file.write("_=^=_& name & description & image name & expression & list of accompanying variables/constants")
+        elif target_file == "Dictionary/methods.txt":  # when writing info for method
+            file.write("_=^=_& name & description & image name & list of accompanying steps")
         else:
             file.write("_=^=_& Lost items are found here")
         file.close()  # close the file
@@ -788,10 +782,10 @@ def file_existence_filter(target_file):
 
 # will return a letter based on the type of item
 def get_item_type(item):
-    if isinstance(item, Variable):  # when displaying info about a variable
-        item_type = "Variable"
-    elif isinstance(item, Constant):  # when displaying info about a constant
+    if isinstance(item, Constant):  # when displaying info about a constant
         item_type = "Constant"
+    elif isinstance(item, Variable):  # when displaying info about a variable
+        item_type = "Variable"
     elif isinstance(item, Equation):  # when displaying info about a equation
         item_type = "Equation"
     elif isinstance(item, Method):  # when displaying info about a method
@@ -864,7 +858,7 @@ def add_edit_item_window(to_edit):
     txt_def = Text(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_def.grid(column=1, columnspan=2, row=2, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    lab_img = Label(frm_add_edit_inner, text="Image:", highlightthickness=1, highlightbackground=accent_light)
+    lab_img = Label(frm_add_edit_inner, text="Image name:", highlightthickness=1, highlightbackground=accent_light)
     lab_img.grid(column=0, row=3, sticky="n, s, e, w")
     txt_img = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_img.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
@@ -873,11 +867,7 @@ def add_edit_item_window(to_edit):
     if to_edit:
         txt_name.insert(0, selected_item.get_name())
         txt_def.insert("insert", selected_item.get_description())
-
-        if selected_item.get_image():
-            txt_name.insert(0, selected_item.get_image())
-        else:
-            txt_name.insert(0, "No Image")
+        txt_img.insert(0, selected_item.get_image_location())
 
     # will set the initial value of the option menu to the correct item type
     if to_edit:
@@ -1116,7 +1106,7 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
 
         start_row += 1
 
-        lab_img = Label(container_widget, text="Image:", highlightthickness=1, highlightbackground=accent_light)
+        lab_img = Label(container_widget, text="Image name:", highlightthickness=1, highlightbackground=accent_light)
         lab_img.grid(column=0, row=start_row, sticky="n, s, e, w")
         txt_img = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
         txt_img.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
@@ -1208,30 +1198,30 @@ def item_submit(container_widget, to_edit, top_level_window):
     # collect all the text boxes into a list
     for item in list_of_widgets:
         if item.winfo_class() == "Entry":
-            outer_list_of_txt_input.append(item.get())
-            full_list_of_txt_input.append(item.get())
+            outer_list_of_txt_input.append(item.get().rstrip())
+            full_list_of_txt_input.append(item.get().rstrip())
 
         elif item.winfo_class() == "Text":
-            outer_list_of_txt_input.append(item.get(1.0, "end"))
-            full_list_of_txt_input.append(item.get(1.0, "end"))
+            outer_list_of_txt_input.append(item.get(1.0, "end").rstrip())
+            full_list_of_txt_input.append(item.get(1.0, "end").rstrip())
 
         elif item.winfo_class() == "Frame":
             list_of_frame_widgets = item.winfo_children()
             for inner_item in list_of_frame_widgets:
                 if inner_item.winfo_class() == "Entry":
-                    full_list_of_txt_input.append(inner_item.get())
+                    full_list_of_txt_input.append(inner_item.get().rstrip())
 
                 elif inner_item.winfo_class() == "Text":
-                    full_list_of_txt_input.append(inner_item.get(1.0, "end"))
+                    full_list_of_txt_input.append(inner_item.get(1.0, "end").rstrip())
 
     is_special_char_present = False
     name_not_entered = False
 
-    if full_list_of_txt_input[0] == '' or full_list_of_txt_input[0] == '\n' or full_list_of_txt_input[0] == ' ':
+    if full_list_of_txt_input[0] == '':
         name_not_entered = True
 
     for user_input in full_list_of_txt_input:
-        if '&' in user_input:       # will look out for the use of the special character '&'
+        if '&' in user_input or '§' in user_input:       # will look out for the use of the special character '&'
             is_special_char_present = True
 
     if name_not_entered:
@@ -1239,8 +1229,8 @@ def item_submit(container_widget, to_edit, top_level_window):
                    False)
 
     elif is_special_char_present:
-        alert_user("In one of the fields you have used the character '&'. This is not allowed. Please change it.",
-                   False)
+        alert_user("In one of the fields you have used either the character '&' or '§'. These are not allowed. "
+                   "Please change them.", False)
 
     else:
         # will start the save logic corresponding to what the user wants to save
@@ -1594,7 +1584,10 @@ frm_info.grid_columnconfigure(0, weight=1)
 frm_info.grid_rowconfigure(0, weight=1)
 frm_info_scroll_wrapper.grid_columnconfigure(0, weight=1)
 frm_info_scroll_wrapper.grid_rowconfigure(0, weight=1)
-frm_info_inner.grid_columnconfigure(4, weight=1)
+frm_info_inner.grid_columnconfigure(0, weight=1)
+frm_info_inner.grid_columnconfigure(1, weight=1)
+frm_info_inner.grid_columnconfigure(2, weight=1)
+
 
 frm_info_scroll_wrapper.grid(column=0, row=0, sticky="n, s, e, w")
 

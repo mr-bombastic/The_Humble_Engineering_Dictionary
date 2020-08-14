@@ -1,1 +1,0 @@
-_=^=_& name & description & symbol & unit & last saved value

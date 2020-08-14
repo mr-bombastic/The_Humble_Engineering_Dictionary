@@ -1,0 +1,5 @@
+_=^=_& Lost items are found here
+Universal Gas Constant&This value indicates a proportionality between energy and temperature per mole.&&§bar{R}&8.314462&§frac{J}{K mol}
+No ImageUniversal Gas Constant&This value indicates a proportionality between energy and temperature per mole.&name&§bar{R}&8.314462&§frac{J}{K mol}
+Universal Gas Constant&This value indicates a proportionality between energy and temperature per mole.&No image association&§bar{R}&8.314462&§frac{J}{K mol}
+Universal Gas Constant super long name bou&This value indicates a proportionality between energy and temperature per mole.&No image association&§bar{R}&8.314462&§frac{J}{K mol}

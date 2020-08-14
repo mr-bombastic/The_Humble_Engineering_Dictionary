@@ -1,0 +1,6 @@
+_=^=_& name & description & image name & symbol & value & units
+
+
+
+
+Universal Gas Constant&This value indicates a proportionality between energy and temperature per mole.&No image association&§bar{R}&8.314462&§frac{J}{K mol}

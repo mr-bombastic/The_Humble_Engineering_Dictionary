@@ -1,1 +1,0 @@
-_=^=_& name & description & equation in latex form & list of accompanying items

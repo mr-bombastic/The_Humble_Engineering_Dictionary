@@ -5,17 +5,16 @@ class Logic:
     def __init__(self, name, description, image):  # constructor for class
         self._name = name
         self._description = description
-        self._image_local = image
 
-        if image:
-            try:
-                self._image = PhotoImage(file=image)
+        try:
+            self._image = PhotoImage(file="Dictionary/all_images/" + image)
+            self._image_local = image
 
-            except:     # this is in case the code cannot find the picture
-                self._image = PhotoImage(file="error.png")
+        except:  # this is in case the code cannot find the picture
+            self._image = PhotoImage(file="error.png")
+            self._image_local = "No image association"
 
-        else:
-            self._image = False
+
 
     def get_name(self):
         return self._name
