@@ -1,57 +1,22 @@
-# Improting Image class from PIL module 
-from PIL import Image
+import tkinter as tk
+from threading import Thread
+from time import sleep
 
-# Opens a image in RGB mode 
-im = Image.open("Dictionary/all_latex_images/Pa.png")
+def print_hello():
+    print("Hello")
+    sleep(3)
+    print("Done")
 
-# Size of the image in pixels (size of orginal image) 
-# (This is not mandatory) 
-width, height = im.size
+root = tk.Tk()
 
-crop_top = 0
-crop_bot = 0
-crop_left = 0
-crop_right = 0
+container = tk.Frame(root)
+container.pack(fill="both", expand=True)
+container.grid_rowconfigure(0, weight=1)
+container.grid_columnconfigure(0, weight=1)
 
-for w in range(0, width):
-    for h in range(0, height):
-        if im.getpixel((w, h)) != (255, 255, 255, 0):
-            crop_left = w
-            break
-    else:
-        continue
-    break
+frame_main = tk.Frame(container)
+frame_main.grid(row=0, column=0, sticky="NSEW")
 
-for w in range(width-1, 0, -1):
-    for h in range(height-1, 0, -1):
-        if im.getpixel((w, h)) != (255, 255, 255, 0):
-            crop_right = w+1
-            break
-    else:
-        continue
-    break
-
-for h in range(0, height):
-    for w in range(0, width):
-        if im.getpixel((w, h)) != (255, 255, 255, 0):
-            crop_top = h
-            break
-    else:
-        continue
-    break
-
-for h in range(height-1, 0, -1):
-    for w in range(width - 1, 0, -1):
-        if im.getpixel((w, h)) != (255, 255, 255, 0):
-            crop_bot = h+1
-            break
-    else:
-        continue
-    break
-
-
-# Cropped image of above dimension 
-# (It will not change orginal image) 
-im1 = im.crop((crop_left, crop_top, crop_right, crop_bot))
-
-im1.save("Dictionary/all_latex_images/Pa.png")
+button_hello = tk.Button(frame_main, text="Say Hello", command=lambda: Thread(target=print_hello).start())
+button_hello.grid(sticky="NSEW")
+root.mainloop()

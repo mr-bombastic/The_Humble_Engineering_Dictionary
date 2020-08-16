@@ -1,10 +1,5 @@
-class A(object):
-    def __init__(self, string):
-        print(string + " world")
-
-class B(A):
-    def __init__(self, string):
-        print(string)
-        super(B, self).__init__(string)
-
-B("gfsdh")
+x = 10
+for i in range(0, x):
+    if i == 4:
+        x += 5
+    print(i)

@@ -2,6 +2,7 @@
 <project version="4">
   <component name="Encoding">
     <file url="file://$PROJECT_DIR$/Dictionary/constants.txt" charset="windows-1252" />
+    <file url="file://$PROJECT_DIR$/Dictionary/equations.txt" charset="windows-1252" />
     <file url="file://$PROJECT_DIR$/Dictionary/variables.txt" charset="windows-1252" />
   </component>
 </project>

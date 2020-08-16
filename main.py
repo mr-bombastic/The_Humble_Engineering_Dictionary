@@ -1,5 +1,6 @@
 from tkinter import *
-import os
+import time
+from threading import Thread
 from PIL import Image
 import tkinter.font as tkfont
 from tkinter import messagebox
@@ -61,18 +62,21 @@ window.option_add("*Button.Background", color_mid)
 window.option_add("*Radiobutton.Background", color_mid)
 window.option_add("*Canvas.Background", color_mid)
 window.option_add("*Canvas.highlightBackground", color_mid)
+window.option_add("*Canvas.highlightColor", color_mid)
 window.option_add("*Text.Background", color_mid)
 window.option_add("*Text.selectBackground", color_highlight)
 window.option_add("*Text.selectForeground", text_color)
 window.option_add("*Entry.Background", color_mid)
+window.option_add("*Entry.readonlyBackground", color_light)
 window.option_add("*Entry.selectBackground", color_highlight)
 window.option_add("*Entry.selectForeground", text_color)
+
 window.option_add("*Label.Anchor", "w")  # default label anchor
 
 window.option_add("*relief", 'flat')
 window.option_add("*Button.relief", 'ridge')
 window.option_add("*highlightthickness", 1)
-window.option_add("*Canvas.highlightthickness", 0)
+window.option_add("*Canvas.highlightThickness", 0)
 window.option_add("*Text.highlightthickness", 0)
 
 window.option_add("*Text.Wrap", "word")
@@ -95,6 +99,7 @@ search_description = IntVar(value=1)
 search_symbol = IntVar(value=1)
 search_value = IntVar(value=1)
 search_units = IntVar(value=1)
+search_field = IntVar(value=1)
 item_type_to_add_or_edit = StringVar()  # this is for adding/editing items. Let it be
 
 
@@ -108,7 +113,7 @@ def alert_user(display_string, get_input):
 
 # print every saved item that is selected in the checkboxes
 def print_all():
-    destroy_results()  # will delete all the old search results
+    destroy_all_result_stuff()  # will delete all the old search results
 
     search_results.clear()  # removes all items from search results
 
@@ -123,12 +128,12 @@ def print_all():
     if search_methods.get() == 1:  # when the user whats to search through all_images
         search_results.extend(string_to_item(get_file_lines("Dictionary/methods.txt"), "Method"))
 
-    print_results()
+    Thread(target=print_results).start()
 
 
 # Will search though the database and fill the array to ultimately have it printed
 def search():
-    destroy_results()  # will delete all the old search results
+    destroy_all_result_stuff()  # will delete all the old search results
 
     if txt_search.get() != '':
         search_results.clear()  # removes all items from search results
@@ -148,7 +153,7 @@ def search():
 
         # check to see if there are any results
         if search_results:
-            print_results()
+            Thread(target=print_results).start()
         else:  # if there are not results let the user know there was nothing found
             Label(frm_results_inner, text="No results fit your search criteria.\nPlease try different criteria.").grid()
 
@@ -197,6 +202,10 @@ def search_in_list(search_text, list_to_search):
                     remove += 1
                 remove_value += 1  # incremented to understand the number of parameters that will be considered
 
+            # when the user whats to search through items applicable field
+            if search_field.get() == 1:
+                pass
+
         # when searching though an equation one must also look into the variables/constants within
         elif get_item_type(list_to_search[i]) == "Equation":
 
@@ -229,24 +238,30 @@ def search_in_list(search_text, list_to_search):
 
 
 # destroys all previous search results to allow new ones to be printed. also deletes stored widgets
-def destroy_results():
+def destroy_all_result_stuff():
     # reset selected item to nothing
     global selected_item
     selected_item = ""
 
     btn_delete_item.configure(state="disabled")  # disable delete btn as it won't work correctly with nothing selected
 
-    # destroys anything that was in the display_info frame before
-    for widget in frm_info_inner.winfo_children():
-        widget.destroy()
-
-    # destroys all widgets in frame
-    for widget in frm_results_inner.winfo_children():
-        widget.destroy()
+    destroy_search_results()
 
     # required since the widgets in here no longer exist
     global previously_altered_widgets
     previously_altered_widgets = ""
+
+
+# destroys all widgets in the search results frame
+def destroy_search_results():
+    for widget in frm_results_inner.winfo_children():
+        widget.destroy()
+
+
+# destroys anything that was in the display_info frame before
+def destroy_item_info():
+    for widget in frm_info_inner.winfo_children():
+        widget.destroy()
 
 
 # called when a search result is clicked to get the widget's row. From there display_info can display correct item
@@ -281,88 +296,87 @@ def callback_get_widget_row(event):
 # ========================= Basically done, just need to make it expand horizontally =========================
 # will print the results into the results box
 def print_results():
+    global search_results
     r = 0  # used to increment rows to allow for a list to be displayed
+    last_result_type = ""
+
+    # will loop through everything in search results to add the banner items
+    i = 0
+    while i < len(search_results):  # need to use while because the length of search_results will change
+        current_item_type = get_item_type(search_results[i])
+
+        # if the type of item has changed
+        if current_item_type != last_result_type:
+            search_results.insert(i, current_item_type+"s:")
+            last_result_type = current_item_type
+
+        i += 1
 
     # loop that will print every result into radiobuttons that can be pressed to select item
     for result in search_results:
-        radb_name = Radiobutton(frm_results_inner, text=result.get_name(), activebackground=color_mid,
-                                activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
-        radb_name.bind("<Button-1>", callback_get_widget_row)
-        radb_name.grid(sticky="n, s, e, w", row=r, column=0)
 
         result_type = get_item_type(result)
 
-        # will set the specific formatting based on the item type
-        if result_type == "Variable" or result_type == "Constant":  # when displaying info about a variable/constant
-            canv_equ = display_info_latex(result.get_symbol(), frm_results_inner, color_mid)
-            canv_equ.bind("<Button-1>", callback_get_widget_row)
-            canv_equ.grid(sticky="n, s, e, w", row=r, column=1)
+        if result_type:
+            radb_name = Radiobutton(frm_results_inner, text=result.get_name(), activebackground=color_mid,
+                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
+                                    indicatoron=False)
+            radb_name.bind("<Button-1>", callback_get_widget_row)
+            radb_name.grid(sticky="n, s, e, w", row=r, column=0)
 
-            canv_equ = display_info_latex(result.get_units(), frm_results_inner, color_mid)
-            canv_equ.bind("<Button-1>", callback_get_widget_row)
+            # will set the specific formatting based on the item type
+            if result_type == "Variable" or result_type == "Constant":  # when displaying info about a variable/constant
+                canv_equ = display_info_latex(result.get_symbol(), frm_results_inner, color_mid)
+                canv_equ.bind("<Button-1>", callback_get_widget_row)
+                canv_equ.grid(sticky="n, s, e, w", row=r, column=1)
 
-            if result_type == "Constant":
-                radb_val = Radiobutton(frm_results_inner, text=str(result.get_value()), activebackground=color_mid,
+                canv_equ = display_info_latex(result.get_units(), frm_results_inner, color_mid)
+                canv_equ.bind("<Button-1>", callback_get_widget_row)
+
+                if result_type == "Constant":
+                    radb_val = Radiobutton(frm_results_inner, text=str(result.get_value()), activebackground=color_mid,
+                                           activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
+                                           indicatoron=False)
+                    radb_val.bind("<Button-1>", callback_get_widget_row)
+                    radb_val.grid(sticky="n, s, e, w", row=r, column=2)
+
+                    canv_equ.grid(sticky="n, s, e, w", row=r, column=3)
+
+                else:
+                    canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
+
+            elif result_type == "Equation":  # when displaying info about an equation
+                canv_equ = display_info_latex(result.get_equation_latex(), frm_results_inner, color_mid)
+                canv_equ.bind("<Button-1>", callback_get_widget_row)
+                canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+
+            elif result_type == "Method":  # when displaying info about a method
+                radb_descr = Radiobutton(frm_results_inner, text="Number of steps:" + result.get_num_steps(),
+                                         activebackground=color_mid, activeforeground=text_color, borderwidth=0,
+                                         selectcolor=color_mid, indicatoron=False)
+                radb_descr.bind("<Button-1>", callback_get_widget_row)
+                radb_descr.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+
+            elif result_type == "Logic":  # when displaying logic info
+                radb_log = Radiobutton(frm_results_inner, text="Click for more info", activebackground=color_mid,
                                        activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                        indicatoron=False)
-                radb_val.bind("<Button-1>", callback_get_widget_row)
-                radb_val.grid(sticky="n, s, e, w", row=r, column=2)
+                radb_log.bind("<Button-1>", callback_get_widget_row)
+                radb_log.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
-                canv_equ.grid(sticky="n, s, e, w", row=r, column=3)
-
-            else:
-                canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
-
-            radb_type = Radiobutton(frm_results_inner, text=result_type, activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
-
-        elif result_type == "Equation":  # when displaying info about an equation
-            canv_equ = display_info_latex(result.get_equation_latex(), frm_results_inner, color_mid)
-            canv_equ.bind("<Button-1>", callback_get_widget_row)
-            canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
-
-            radb_type = Radiobutton(frm_results_inner, text="Equation", activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
-
-        elif result_type == "Method":  # when displaying info about a method
-            radb_descr = Radiobutton(frm_results_inner, text="Number of steps:" + result.get_num_steps(),
-                                     activebackground=color_mid, activeforeground=text_color, borderwidth=0,
-                                     selectcolor=color_mid, indicatoron=False)
-            radb_descr.bind("<Button-1>", callback_get_widget_row)
-            radb_descr.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
-
-            radb_type = Radiobutton(frm_results_inner, text="Method", activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
-
-        elif result_type == "Logic":  # when displaying logic info
-            radb_log = Radiobutton(frm_results_inner, text="Click for more info", activebackground=color_mid,
-                                   activeforeground=text_color, borderwidth=0, selectcolor=color_mid, indicatoron=False)
-            radb_log.bind("<Button-1>", callback_get_widget_row)
-            radb_log.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
-
-            radb_type = Radiobutton(frm_results_inner, text="Logic", activebackground=color_mid,
-                                    activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
-                                    indicatoron=False)
-            radb_type.bind("<Button-1>", callback_get_widget_row)
-            radb_type.grid(sticky="n, s, e, w", row=r, column=4)
-
-        r += 1  # increment rows so that items will not overlap
+            r += 1  # increment rows so that items will not overlap
+        else:
+            if result != 0:
+                Label(frm_results_inner, text=result, bg=color_mid, anchor="center",
+                      font=("TkDefaultFont", fontsize + 2, "bold"))\
+                    .grid(sticky="n, s, e, w", row=r, column=0, columnspan=4)
+                r += 1
 
 
 # will display a selected item's info in the display area
 def display_info(r):
     # destroys anything that was in the display_info frame before
-    for widget in frm_info_inner.winfo_children():
-        widget.destroy()
+    destroy_item_info()
 
     btn_delete_item.configure(state="active")   # activate the delete button as an item would have been selected
 
@@ -370,9 +384,10 @@ def display_info(r):
     selected_item = search_results[r]  # get the search_result from the corresponding row
 
     # Name of the item
-    Message(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center', width=m_len*30,
-          font=("TkDefaultFont", fontsize + 10, "bold")) \
-        .grid(row=0, rowspan=2, column=0, columnspan=2, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
+    msg_name = Message(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center',
+                       width=m_len*30, font=("TkDefaultFont", fontsize + 10, "bold"))
+    msg_name.bind("<Button-1>", lambda e: copy_to_clipboard(selected_item.get_name(), msg_name))
+    msg_name.grid(row=0, rowspan=2, column=0, columnspan=2, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
 
     # Button to edit item
     Button(frm_info_inner, text="Edit Item", command=lambda: add_edit_item_window(True),
@@ -385,7 +400,7 @@ def display_info(r):
         canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
         canv_image.image = selected_item.get_image()
         canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
-        #canv_image.configure(width=500)
+        canv_image.configure(width=selected_item.get_image().width(), height=selected_item.get_image().height())
 
         # trying to fix the width of the canvas so that the images will fit properly
 
@@ -411,8 +426,7 @@ def display_info(r):
     elif item_type == "Method":  # when displaying info about a method
         Label(frm_info_inner, text="Method").grid(padx=spacing_out_x * 1.4, pady=spacing_out_y, sticky="e", row=1,
                                                   column=2)
-        Label(frm_info_inner, text=selected_item.get_description()).grid(row=r, column=0, columnspan=4,
-                                                                         sticky="n, s, e, w")
+        display_info_description(selected_item, r)
 
         r += 1  # set starting row
 
@@ -433,21 +447,32 @@ def display_info(r):
                 r = display_info_equ(selected_item.get_step(s), r)
                 r += 1
 
-            Label(frm_info_inner, text=selected_item.get_step(s).get_description()) \
-                .grid(row=r, column=0, columnspan=4, pady=spacing_out_y)
+            display_info_description(selected_item.get_step(s), r)
             r += 1
 
     # put item description at the end for all these values as it will make the most sense
-    # all_images have their descriptions placed before all the steps
+    # all items have their descriptions placed before all the other components
     if item_type != "Method":
-        Message(frm_info_inner, text=selected_item.get_description(), bg=color_light, anchor="w", width=m_len*30)\
-            .grid(row=r, column=0, columnspan=4, sticky="n, s, e, w")
+        display_info_description(selected_item, r)
+
+
+# will create and print a text widget with the description of the given item printed in it
+def display_info_description(item, r):
+    if item.get_description() != "":
+        txt_descr = Text(frm_info_inner, bg=color_light, width=35)
+        txt_descr.insert("insert", item.get_description())
+
+        num_of_lines = int(len(item.get_description())/35)+1
+
+        txt_descr.configure(state="disabled", height=num_of_lines)
+        txt_descr.grid(row=r, column=0, columnspan=4, sticky="n, s, e, w")
 
 
 # used to display information for equations. was taken out just to reduce repetition
 # does NOT display the name or description of the equation
 def display_info_equ(equ, row):
-    display_info_latex(equ.get_equation_latex(), frm_info_inner).grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
+    display_info_latex(equ.get_equation_latex(), frm_info_inner, frm_info_inner.cget("bg"))\
+        .grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
 
     row += 1
 
@@ -468,6 +493,9 @@ def display_info_equ(equ, row):
             .grid(row=row, column=0)
         row += 1
 
+        display_info_description(variable, row)
+        row += 1
+
         display_info_var_const(variable, row)
         row += 1
 
@@ -477,71 +505,96 @@ def display_info_equ(equ, row):
 # returns a canvas with the desired image within it
 # it will create and save an image if one has not previously been saved
 def display_info_latex(string, container_widget, widget_color):
-    latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
-    file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
+    # this check is necessary. If you don't check and there is nothing, the code will break
+    if string != "":
+        latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
+        file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
 
-    if not os.path.isfile(file_name):   # when a file hasn't already been created
-        fig = figure.Figure(dpi=120)    # create the figure
-        fig.text(0, 0.5, latex_text, color=text_color)  # (x coordinat, y coordinat, text, font size)
-        fig.savefig(file_name, bbox_inches='tight', transparent=True)
-        fig.clf()
+        if not os.path.isfile(file_name):   # when a file hasn't already been created
+            fig = figure.Figure(dpi=120)    # create the figure
+            fig.text(0, 0.5, latex_text, color=text_color)  # (x coordinat, y coordinat, text, font size)
+            fig.savefig(file_name, bbox_inches='tight', transparent=True)
+            fig.clf()
 
-        im = Image.open(file_name)
+            im = Image.open(file_name)
 
-        # Size of the image in pixels. Return tuple
-        width, height = im.size
+            # Size of the image in pixels. Return tuple
+            width, height = im.size
 
-        crop_top = 0
-        crop_bot = 0
-        crop_left = 0
-        crop_right = 0
+            crop_top = 0
+            crop_bot = 0
+            crop_left = 0
+            crop_right = 0
 
-        # these loops will filter though the image to find when a pixel has some color in it
-        # this will help to define how the image will be cropped to be as small as possible
-        for w in range(0, width):
-            for h in range(0, height):
-                if im.getpixel((w, h)) != (255, 255, 255, 0):
-                    crop_left = w-1
-                    break
-            else:
-                continue
-            break
-        for w in range(width - 1, 0, -1):
-            for h in range(height - 1, 0, -1):
-                if im.getpixel((w, h)) != (255, 255, 255, 0):
-                    crop_right = w + 2
-                    break
-            else:
-                continue
-            break
-        for h in range(0, height):
+            # these loops will filter though the image to find when a pixel has some color in it
+            # this will help to define how the image will be cropped to be as small as possible
             for w in range(0, width):
-                if im.getpixel((w, h)) != (255, 255, 255, 0):
-                    crop_top = h
-                    break
-            else:
-                continue
-            break
-        for h in range(height - 1, 0, -1):
+                for h in range(0, height):
+                    if im.getpixel((w, h)) != (255, 255, 255, 0):
+                        crop_left = w-1
+                        break
+                else:
+                    continue
+                break
             for w in range(width - 1, 0, -1):
-                if im.getpixel((w, h)) != (255, 255, 255, 0):
-                    crop_bot = h + 2
-                    break
-            else:
-                continue
-            break
+                for h in range(height - 1, 0, -1):
+                    if im.getpixel((w, h)) != (255, 255, 255, 0):
+                        crop_right = w + 2
+                        break
+                else:
+                    continue
+                break
+            for h in range(0, height):
+                for w in range(0, width):
+                    if im.getpixel((w, h)) != (255, 255, 255, 0):
+                        crop_top = h-1
+                        break
+                else:
+                    continue
+                break
+            for h in range(height - 1, 0, -1):
+                for w in range(width - 1, 0, -1):
+                    if im.getpixel((w, h)) != (255, 255, 255, 0):
+                        crop_bot = h + 2
+                        break
+                else:
+                    continue
+                break
 
-        # crop the image based on the dimensions decided above
-        im_crop = im.crop((crop_left, crop_top, crop_right, crop_bot))
-        im_crop.save(file_name)  # overwrite previous image
+            # crop the image based on the dimensions decided above
+            im_crop = im.crop((crop_left, crop_top, crop_right, crop_bot))
+            im_crop.save(file_name)  # overwrite previous image
 
-    image = PhotoImage(file=file_name)
+        image = PhotoImage(file=file_name)
+
+    else:   # in the case where something bad is sent
+        image = PhotoImage(file="error.png")
+        string = "Error copying text"
+
     canv_image = Canvas(container_widget, width=image.width(), height=image.height(),
                         bg=widget_color, highlightbackground=widget_color)
     canv_image.create_image(2, 2, anchor="nw", image=image)
-    canv_image.image = image
+    canv_image.image = image        # this is necessary cause tkinter handling of images is a bit shit
+    canv_image.bind("<Button-1>", lambda e: copy_to_clipboard(string, canv_image))
 
     return canv_image
+
+
+# will copy a given string to the clipboard
+def copy_to_clipboard(string, widget):
+    window.clipboard_clear()    # this is done so that the item to add will not be added to the end of the previous item
+    window.clipboard_append(string)
+
+    # this will use a different thread to do this task meaning the program will not freeze whilst the button is flashing
+    Thread(target=lambda: flash_widget(widget)).start()
+
+
+# will flash the given widget to indicate something happened
+def flash_widget(widget):
+    og_color = widget.cget("bg")
+    widget.configure(bg=color_highlight)
+    time.sleep(0.75)
+    widget.configure(bg=og_color)
 
 
 # will remove any characters that are not allowed to be in a name
@@ -557,7 +610,8 @@ def remove_bad_chars(string):
 # used to display information for variables and constants. was taken out just to reduce repetition
 # does NOT display names or descriptions
 def display_info_var_const(var_or_const, row):
-    frm_attribute = Frame(frm_info_inner)
+    frm_attribute = LabelFrame(frm_info_inner, text="click item to copy to clipboard", relief="ridge",
+                               labelanchor="se", font=("TkDefaultFont", fontsize - 3, "italic"))
     frm_attribute.grid(row=row, column=0, columnspan=3, sticky="n, s, e, w")
     frm_attribute.grid_columnconfigure(1, weight=1)
     frm_attribute.grid_columnconfigure(3, weight=1)
@@ -568,7 +622,10 @@ def display_info_var_const(var_or_const, row):
 
     if get_item_type(var_or_const) == "Constant":       # for a constant specifically
         Label(frm_attribute, text="Value: ").grid(row=0, column=2, sticky="e")
-        Entry(frm_attribute, text=var_or_const.get_value()).grid(row=0, column=3)
+        ety_value = Entry(frm_attribute)
+        ety_value.insert(0, var_or_const.get_value())
+        ety_value.configure(state="readonly", width=len(var_or_const.get_value()))
+        ety_value.grid(row=0, column=3)
 
     Label(frm_attribute, text="Units: ").grid(row=0, column=4, sticky="e")
     display_info_latex(var_or_const.get_units(), frm_attribute, color_light).grid(row=0, column=5, sticky="e")
@@ -593,7 +650,7 @@ def item_to_string(item):
                           str(item.get_image_location()) + '&' + str(item.get_equation_latex()))
 
         for var in item.get_all_variables():
-            item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "", 1)
+            item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "")
 
         item_string += "&end:Equation"
 
@@ -602,7 +659,7 @@ def item_to_string(item):
                           str(item.get_image_location()))
 
         for step in item.get_steps():
-            item_string += "&type:" + str(get_item_type(step)) + '&' + item_to_string(step).replace("\n", "", 1)
+            item_string += "&type:" + str(get_item_type(step)) + '&' + item_to_string(step).replace("\n", "")
 
         item_string += "&end:Method"
 
@@ -1267,16 +1324,12 @@ def item_submit(container_widget, to_edit, top_level_window):
                     full_list_of_txt_input.append(inner_item.get(1.0, "end").rstrip())
 
     is_special_char_present = False
-    name_not_entered = False
-
-    if full_list_of_txt_input[0] == '':
-        name_not_entered = True
 
     for user_input in full_list_of_txt_input:
         if '&' in user_input or '§' in user_input:       # will look out for the use of the special character '&'
             is_special_char_present = True
 
-    if name_not_entered:
+    if full_list_of_txt_input[0] == '':     # if no name has been given to the item
         alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
                    False)
 
@@ -1376,10 +1429,10 @@ def item_submit_equ(outer_text_list, equ_frame_children):
     # get list of entry boxes inside the equation frame
     for item in equ_frame_children:
         if item.winfo_class() == "Entry":
-            equ_frame_txt_box_text.append(item.get())
+            equ_frame_txt_box_text.append(item.get().rstrip())
 
         elif item.winfo_class() == "Text":
-            equ_frame_txt_box_text.append(item.get(1.0, "end"))
+            equ_frame_txt_box_text.append(item.get(1.0, "end").rstrip())
 
     equ_last_frame_child = LabelFrame()
     list_of_variables = []
@@ -1516,6 +1569,8 @@ Checkbutton(frm_places_checkboxs, text="Value", variable=search_value) \
     .grid(column=1, row=1, sticky="n, s, e, w")
 Checkbutton(frm_places_checkboxs, text="Units", variable=search_units) \
     .grid(column=0, row=2, sticky="n, s, e, w")
+Checkbutton(frm_places_checkboxs, text="Field", variable=search_field) \
+    .grid(column=1, row=2, sticky="n, s, e, w")
 
 # button to show everything from the selected item types
 btn_search = Button(frm_checkbox_holder, text="Show everything from selected item types.", command=print_all)
@@ -1591,11 +1646,11 @@ btn_delete_item.grid(column=0, row=2, sticky="w")
 
 # print column titles for easier user understanding
 lab_result_name = Label(frm_results_titlerow, bg=color_light, text="Name", anchor="center")
-lab_result_name.grid(row=0, column=0, padx=spacing_out_x * 3, sticky="w")
+lab_result_name.grid(row=0, column=0, padx=spacing_out_x * 4, sticky="w")
 lab_result_info = Label(frm_results_titlerow, bg=color_light, text="Information", anchor="center")
-lab_result_info.grid(row=0, column=1, padx=spacing_out_x * 8)
-lab_result_type = Label(frm_results_titlerow, bg=color_light, text="Type", anchor="center")
-lab_result_type.grid(row=0, column=2, padx=spacing_out_x * 3)
+lab_result_info.grid(row=0, column=1, padx=spacing_out_x * 10)
+btn_clear_results = Button(frm_results_titlerow, text="Clear Results", anchor="center", command=destroy_search_results)
+btn_clear_results.grid(row=0, column=2)
 
 # this is for spacing the titles to fit properly
 srlb_results.update()
