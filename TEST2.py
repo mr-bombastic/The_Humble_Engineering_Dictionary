@@ -1,22 +1,23 @@
 import tkinter as tk
-from threading import Thread
-from time import sleep
+from tkinter import ttk
 
-def print_hello():
-    print("Hello")
-    sleep(3)
-    print("Done")
+app = tk.Tk()
+app.geometry('200x100')
 
-root = tk.Tk()
+labelTop = tk.Label(app,
+                    text="Choose your favourite month")
+labelTop.grid(column=0, row=0)
 
-container = tk.Frame(root)
-container.pack(fill="both", expand=True)
-container.grid_rowconfigure(0, weight=1)
-container.grid_columnconfigure(0, weight=1)
+comboExample = ttk.Combobox(app,
+                            values=[
+                                "January",
+                                "February",
+                                "March",
+                                "April"])
+print(dict(comboExample))
+comboExample.grid(column=0, row=1)
+comboExample.current(1)
 
-frame_main = tk.Frame(container)
-frame_main.grid(row=0, column=0, sticky="NSEW")
+print(comboExample.current(), comboExample.get())
 
-button_hello = tk.Button(frame_main, text="Say Hello", command=lambda: Thread(target=print_hello).start())
-button_hello.grid(sticky="NSEW")
-root.mainloop()
+app.mainloop()

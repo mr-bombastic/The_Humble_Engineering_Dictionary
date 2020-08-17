@@ -2,8 +2,8 @@ from Classes.logic import *  # will import all classes in that document
 
 
 class Method(Logic):
-    def __init__(self, name, description, image, steps):  # constructor for class
-        super().__init__(name, description, image)
+    def __init__(self, name, description, image, fields, steps):  # constructor for class
+        super().__init__(name, description, image, fields)
 
         self._steps = steps
 

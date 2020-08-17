@@ -2,10 +2,10 @@ from tkinter import *
 
 
 class Logic:
-    def __init__(self, name, description, image):  # constructor for class
+    def __init__(self, name, description, image, fields):  # constructor for class
         self._name = name
         self._description = description
-        self._fields = None
+        self._fields = fields
 
         try:
             self._image = PhotoImage(file="Dictionary/all_images/" + image)

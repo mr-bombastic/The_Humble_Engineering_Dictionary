@@ -4,6 +4,7 @@ from threading import Thread
 from PIL import Image
 import tkinter.font as tkfont
 from tkinter import messagebox
+from tkinter import simpledialog
 from Classes.logic import Logic
 from Classes.variable import Variable
 from Classes.constant import Constant
@@ -34,7 +35,7 @@ right_side_thickness = 150
 # stuff that transcends various dimensions
 previously_altered_widgets = []
 step_num = 0
-selected_item = ""
+selected_item = None
 search_results = []  # create an array of the results
 
 # main window stuff
@@ -101,6 +102,7 @@ search_value = IntVar(value=1)
 search_units = IntVar(value=1)
 search_field = IntVar(value=1)
 item_type_to_add_or_edit = StringVar()  # this is for adding/editing items. Let it be
+field_selected = StringVar()  # create the item type in this fancy way I don't understand
 
 
 # used to alert the user of their actions and asks them if they want to continue or not
@@ -290,10 +292,10 @@ def callback_get_widget_row(event):
             # display_info_expression_update_color(widget)
 
     previously_altered_widgets = widgets_to_alter  # saves array of widgets for if statement seen above
-    display_info(r)  # display item corresponding to clicked row
+
+    Thread(target=lambda: display_info(r)).start()      # display item corresponding to clicked row
 
 
-# ========================= Basically done, just need to make it expand horizontally =========================
 # will print the results into the results box
 def print_results():
     global search_results
@@ -326,11 +328,11 @@ def print_results():
 
             # will set the specific formatting based on the item type
             if result_type == "Variable" or result_type == "Constant":  # when displaying info about a variable/constant
-                canv_equ = display_info_latex(result.get_symbol(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_symbol(), frm_results_inner, color_mid)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
                 canv_equ.grid(sticky="n, s, e, w", row=r, column=1)
 
-                canv_equ = display_info_latex(result.get_units(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_units(), frm_results_inner, color_mid)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
 
                 if result_type == "Constant":
@@ -346,7 +348,7 @@ def print_results():
                     canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
 
             elif result_type == "Equation":  # when displaying info about an equation
-                canv_equ = display_info_latex(result.get_equation_latex(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_equation_latex(), frm_results_inner, color_mid)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
                 canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
@@ -471,7 +473,7 @@ def display_info_description(item, r):
 # used to display information for equations. was taken out just to reduce repetition
 # does NOT display the name or description of the equation
 def display_info_equ(equ, row):
-    display_info_latex(equ.get_equation_latex(), frm_info_inner, frm_info_inner.cget("bg"))\
+    create_latex_widget(equ.get_equation_latex(), frm_info_inner, frm_info_inner.cget("bg"))\
         .grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
 
     row += 1
@@ -504,7 +506,7 @@ def display_info_equ(equ, row):
 
 # returns a canvas with the desired image within it
 # it will create and save an image if one has not previously been saved
-def display_info_latex(string, container_widget, widget_color):
+def create_latex_widget(string, container_widget, widget_color):
     # this check is necessary. If you don't check and there is nothing, the code will break
     if string != "":
         latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
@@ -618,7 +620,7 @@ def display_info_var_const(var_or_const, row):
     frm_attribute.grid_columnconfigure(5, weight=1)
 
     Label(frm_attribute, text="Symbol: ").grid(row=0, column=0, sticky="e")
-    display_info_latex(var_or_const.get_symbol(), frm_attribute, color_light).grid(row=0, column=1, sticky="w")
+    create_latex_widget(var_or_const.get_symbol(), frm_attribute, color_light).grid(row=0, column=1, sticky="w")
 
     if get_item_type(var_or_const) == "Constant":       # for a constant specifically
         Label(frm_attribute, text="Value: ").grid(row=0, column=2, sticky="e")
@@ -628,26 +630,29 @@ def display_info_var_const(var_or_const, row):
         ety_value.grid(row=0, column=3)
 
     Label(frm_attribute, text="Units: ").grid(row=0, column=4, sticky="e")
-    display_info_latex(var_or_const.get_units(), frm_attribute, color_light).grid(row=0, column=5, sticky="e")
+    create_latex_widget(var_or_const.get_units(), frm_attribute, color_light).grid(row=0, column=5, sticky="e")
 
 
 # get the corresponding string of each item type
 def item_to_string(item):
     item_type = get_item_type(item)
 
+    item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
+                      str(item.get_image_location()) + '&')
+
+    for field in item.get_fields:
+        item_string += str(field) + ','
+
+    item_string.replace(',', '', -1)
+
     if item_type == "Variable":  # when displaying info about a variable
-        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' +
-                          str(item.get_units()))
+        item_string += str('&' + str(item.get_symbol()) + '&' + str(item.get_units()))
 
     elif item_type == "Constant":  # when displaying info about a constant
-        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()) + '&' + str(item.get_symbol()) + '&' +
-                          str(item.get_value()) + '&' + str(item.get_units()))
+        item_string += str('&' + str(item.get_symbol()) + '&' + str(item.get_value()) + '&' + str(item.get_units()))
 
     elif item_type == "Equation":  # when displaying info about a equation
-        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()) + '&' + str(item.get_equation_latex()))
+        item_string += str('&' + str(item.get_equation_latex()))
 
         for var in item.get_all_variables():
             item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "")
@@ -655,17 +660,10 @@ def item_to_string(item):
         item_string += "&end:Equation"
 
     elif item_type == "Method":  # when displaying info about a method
-        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()))
-
         for step in item.get_steps():
             item_string += "&type:" + str(get_item_type(step)) + '&' + item_to_string(step).replace("\n", "")
 
         item_string += "&end:Method"
-
-    elif item_type == "Logic":  # when displaying logic info
-        item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
-                          str(item.get_image_location()))
 
     else:
         return False
@@ -703,17 +701,20 @@ def string_to_item_conversion_logic(archived_line, item_type):
 
         # will decide and create the correct item type
         # len() portion ensures split_line array is the correct length which would indicate correct storage formatting
-        if item_type == "Logic" and len(split_line) == 3:  # when displaying logic info
-            item = Logic(split_line[0], split_line[1], split_line[2])
+        if item_type == "Logic" and len(split_line) == 4:  # when displaying logic info
+            item = Logic(split_line[0], split_line[1], split_line[2], split_line[3].split(','))
 
-        elif item_type == "Variable" and len(split_line) == 5:  # when displaying info about a variable
-            item = Variable(split_line[0], split_line[1], split_line[2], split_line[3], split_line[4])
+        elif item_type == "Variable" and len(split_line) == 6:  # when displaying info about a variable
+            item = Variable(split_line[0], split_line[1], split_line[2], split_line[3].split(','),
+                            split_line[4], split_line[5])
 
-        elif item_type == "Constant" and len(split_line) == 6:  # when displaying info about a constant
-            item = Constant(split_line[0], split_line[1], split_line[2], split_line[3], split_line[4], split_line[5])
+        elif item_type == "Constant" and len(split_line) == 7:  # when displaying info about a constant
+            item = Constant(split_line[0], split_line[1], split_line[2], split_line[3].split(','),
+                            split_line[4], split_line[5], split_line[6])
 
-        # >= 10 because name, description, image, expression, type identifier, and 1 variable (shorter than constants)
-        elif item_type == "Equation" and len(split_line) >= 10:  # when displaying info about a equation
+        # >= 12 because name, description, image, field, expression, type identifier,
+        # and 1 variable (shorter than constants)
+        elif item_type == "Equation" and len(split_line) >= 12:  # when displaying info about a equation
             list_of_var_con = []  # will hold the list of variables and constants the equation will have
 
             # will look at whether there are variables/constants in the string
@@ -721,28 +722,30 @@ def string_to_item_conversion_logic(archived_line, item_type):
             for i in range(0, len(split_line) - 1):
                 if split_line[i] == "type:Variable":  # when there its a variable
                     list_of_var_con.append(Variable(split_line[i + 1], split_line[i + 2], split_line[i + 3],
-                                                    split_line[i + 4], split_line[i + 5]))
+                                                    split_line[i + 4].split(','), split_line[i + 5], split_line[i + 6]))
 
                     # will remove the flag item so that it doesn't get reintroduced
                     split_line[i] = ''
 
                 elif split_line[i] == "type:Constant":  # when there its a constant
                     list_of_var_con.append(Constant(split_line[i + 1], split_line[i + 2], split_line[i + 3],
-                                                    split_line[i + 4], split_line[i + 5], split_line[i + 6]))
+                                                    split_line[i + 4].split(','), split_line[i + 5], split_line[i + 6],
+                                                    split_line[i + 7]))
 
                     # will remove the flag item so that it doesn't get reintroduced
                     split_line[i] = ""
 
             # will create a new equation and add it to the list of items
-            item = Equation(split_line[0], split_line[1], split_line[2], split_line[3], list_of_var_con)
+            item = Equation(split_line[0], split_line[1], split_line[2], split_line[3].split(','),
+                            split_line[4], list_of_var_con)
 
-        # >= 7 because name, description, image, type identifier, and 1 logic (shortest item type)
-        elif item_type == "Method" and len(split_line) >= 7:  # when displaying info about a method
+        # >= 9 because name, description, image, field, type identifier, and 1 logic (shortest item type)
+        elif item_type == "Method" and len(split_line) >= 9:  # when displaying info about a method
             list_of_steps = []
             for i in range(0, len(split_line)):
                 inner_string = ""
                 if split_line[i] == "type:Variable":
-                    for s in range(1, 6):  # loop through each piece that corresponds to variables
+                    for s in range(1, 7):  # loop through each piece that corresponds to variables
                         inner_string += split_line[i + s] + '&'  # puts them all into one string
 
                     # pass the string to convert it into a variable
@@ -752,7 +755,7 @@ def string_to_item_conversion_logic(archived_line, item_type):
                     split_line[i] = ''
 
                 if split_line[i] == "type:Constant":
-                    for s in range(1, 7):  # loop through each piece that corresponds to constants
+                    for s in range(1, 8):  # loop through each piece that corresponds to constants
                         inner_string += split_line[i + s] + '&'  # puts them all into one string
 
                     # pass the string to convert it into a constant
@@ -806,7 +809,7 @@ def string_to_item_conversion_logic(archived_line, item_type):
                             split_line[s] = ''
 
                 if split_line[i] == "type:Logic":
-                    for s in range(1, 4):  # loop through each piece that corresponds to logic
+                    for s in range(1, 5):  # loop through each piece that corresponds to logic
                         inner_string += split_line[i + s] + '&'  # puts them all into one string
 
                     # pass the string to convert it into a logic
@@ -816,7 +819,7 @@ def string_to_item_conversion_logic(archived_line, item_type):
                     split_line[i] = ''
 
             # will combine everything together into a method item and add it to the list
-            item = Method(split_line[0], split_line[1], split_line[2], list_of_steps)
+            item = Method(split_line[0], split_line[1], split_line[2], split_line[3].split(','), list_of_steps)
 
     return item  # return the item
 
@@ -884,6 +887,8 @@ def file_existence_filter(target_file):
             file.write("_=^=_& name & description & image name & expression & list of accompanying variables/constants")
         elif target_file == "Dictionary/methods.txt":  # when writing info for method
             file.write("_=^=_& name & description & image name & list of accompanying steps")
+        elif target_file == "Dictionary/saved_fields.txt":  # when writing info for method
+            file.write("_=^=_& Stores all fields so user can select them")
         else:
             file.write("_=^=_& Lost items are found here")
         file.close()  # close the file
@@ -971,6 +976,8 @@ def add_edit_item_window(to_edit):
     lab_img.grid(column=0, row=3, sticky="n, s, e, w")
     txt_img = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_img.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+
+    add_edit_field(frm_add_edit_inner, 4)
 
     # will add the edit item's stuff into the entry boxes
     if to_edit:
@@ -1250,6 +1257,7 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
         print("Please select an item pop-up window would occur here")
 
 
+# this will delete any item that has been idea previously and reconfigure relevant stuff
 def delete_added_item(container_widget, button, type_to_delete, in_meth):
     number_of_children = 0
 
@@ -1295,10 +1303,51 @@ def delete_added_item(container_widget, button, type_to_delete, in_meth):
                     new_step += 1
 
 
+# used to create a region for the user to add fields to their item
+def add_edit_field(container_widget, row):
+    field_selected.set("Select a field tag")  # will set the initial value
+
+    lab_field = Label(container_widget, text="Corresponding Fields:", highlightthickness=1,
+                      highlightbackground=accent_light)
+    lab_field.grid(column=0, row=row, sticky="n, s, e, w")
+    lst_field = Listbox(container_widget, selectmode="multiple")
+    lst_field.grid(column=1, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+
+    # the *list_of_fields will break list_of_fields into individual pieces which will then be sent to OptionMenu
+    opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
+                           command=lambda e: add_edit_field_logic(e, lst_field, opm_field, container_widget, row))
+    opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+
+
+# will chose to either add item to field list or bring up a field creation window
+def add_edit_field_logic(choice, lst, opm, container_widget, row):
+    if choice != "-New Field-":
+        lst.insert("end", choice)
+
+    else:
+        while True:     # will keep going until the user inputs acceptable values
+            field = simpledialog.askstring(title="New Field", prompt="Enter new field name").rstrip()
+
+            if ',' in field or '&' in field or '§' in field:
+                alert_user("You have entered either a coma, '&', or '§' somewhere in the name of the new field. "
+                           "None of these characters are allowed, please try again.", False)
+            else:
+                list_of_fields.append(field)
+                lst.insert("end", field)
+
+                # gotta destroy and make a new optionmenu cause you can't really update what is in the menu
+                opm.destroy()
+                opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
+                                       command=lambda e: add_edit_field_logic(e, lst, opm_field, container_widget, row))
+                opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+                break
+
+
 # will add or edit the item the user has given
 def item_submit(container_widget, to_edit, top_level_window):
     list_of_widgets = container_widget.winfo_children()
     item_type_selected = item_type_to_add_or_edit.get()
+    fields_selected = ""
 
     item_to_save = ""
     outer_list_of_txt_input = []
@@ -1313,6 +1362,9 @@ def item_submit(container_widget, to_edit, top_level_window):
         elif item.winfo_class() == "Text":
             outer_list_of_txt_input.append(item.get(1.0, "end").rstrip())
             full_list_of_txt_input.append(item.get(1.0, "end").rstrip())
+
+        elif item.winfo_class() == "Listbox":
+            fields_selected = item.get(0, "end")
 
         elif item.winfo_class() == "Frame":
             list_of_frame_widgets = item.winfo_children()
@@ -1341,16 +1393,17 @@ def item_submit(container_widget, to_edit, top_level_window):
         # will start the save logic corresponding to what the user wants to save
         if item_type_selected == "Logic":
             outer_list_of_txt_input.append("")  # since image stuff hasn't been implemented
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
 
         elif item_type_selected == "Variable":
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
 
         elif item_type_selected == "Constant":
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input)
+            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
 
         elif item_type_selected == "Equation":
-            item_to_save = item_submit_equ(outer_list_of_txt_input, list_of_widgets[-1].winfo_children())
+            item_to_save = item_submit_equ(outer_list_of_txt_input, fields_selected,
+                                           list_of_widgets[-1].winfo_children())
 
         elif item_type_selected == "Method":
             last_child = LabelFrame()
@@ -1371,30 +1424,33 @@ def item_submit(container_widget, to_edit, top_level_window):
                     check_text = text[1:]
 
                     if check_text == "Variable":
-                        list_of_steps.append(item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 4]))
+                        list_of_steps.append(
+                            item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 4], fields_selected))
                         i_entry += 4
 
                     elif check_text == "Constant":
-                        list_of_steps.append(item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 5]))
+                        list_of_steps.append(
+                            item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 5], fields_selected))
                         i_entry += 5
 
                     elif check_text == "Logic":
                         # logic_text is stop gap until logic images are implemented
                         logic_text = outer_list_of_txt_input[i_entry:i_entry + 2]
 
-                        list_of_steps.append(item_submit_log_var_const(logic_text))
+                        list_of_steps.append(item_submit_log_var_const(logic_text, fields_selected))
                         i_entry += 2
 
                     elif check_text == "Equation":
-                        list_of_steps.append(item_submit_equ(outer_list_of_txt_input[i_entry:i_entry + 3],
-                                                             list_of_frames[i_frame].winfo_children()))
+                        list_of_steps.append(
+                            item_submit_equ(outer_list_of_txt_input[i_entry:i_entry + 3], fields_selected,
+                                            list_of_frames[i_frame].winfo_children()))
                         i_frame += 1
                         i_entry += 3
 
                 last_child = child
 
             item_to_save = Method(outer_list_of_txt_input[0], outer_list_of_txt_input[1], outer_list_of_txt_input[2],
-                                  list_of_steps)
+                                  fields_selected, list_of_steps)
 
         # checks to see if there is a repeat of the item
         if check_for_repeats(item_to_save):
@@ -1407,23 +1463,24 @@ def item_submit(container_widget, to_edit, top_level_window):
                 move_item_to_trash(selected_item)
 
             save_items(item_to_save)
+            save_list_of_fields()       # done now so that if previous addition was canceled it would not be saved
             top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
 
 
 # will return a logic, variable, or constant depending on the length of list given
-def item_submit_log_var_const(text_list):
+def item_submit_log_var_const(text_list, fields):
     if len(text_list) < 5:
-        return Logic(text_list[0], text_list[1], text_list[2])
+        return Logic(text_list[0], text_list[1], text_list[2], fields)
 
     elif len(text_list) == 5:
-        return Variable(text_list[0], text_list[1], text_list[2], text_list[3], text_list[4])
+        return Variable(text_list[0], text_list[1], text_list[2], fields, text_list[3], text_list[4])
 
     else:
-        return Constant(text_list[0], text_list[1], text_list[2], text_list[3], text_list[4], text_list[5])
+        return Constant(text_list[0], text_list[1], text_list[2], fields, text_list[3], text_list[4], text_list[5])
 
 
 # will return a equation filled out equation
-def item_submit_equ(outer_text_list, equ_frame_children):
+def item_submit_equ(outer_text_list, fields, equ_frame_children):
     equ_frame_txt_box_text = []
 
     # get list of entry boxes inside the equation frame
@@ -1443,18 +1500,19 @@ def item_submit_equ(outer_text_list, equ_frame_children):
             if equ_last_frame_child.cget("text") == "Variable:":
                 text_list = equ_frame_txt_box_text[i_entry:i_entry + 4]
                 text_list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(text_list))
+                list_of_variables.append(item_submit_log_var_const(text_list, fields))
                 i_entry += 4
 
             elif child.cget("text") == "Constant:":
                 text_list = equ_frame_txt_box_text[i_entry:i_entry + 5]
                 text_list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(text_list))
+                list_of_variables.append(item_submit_log_var_const(text_list, fields))
                 i_entry += 5
 
         equ_last_frame_child = child
 
-    return Equation(outer_text_list[0], outer_text_list[1], outer_text_list[2], outer_text_list[3], list_of_variables)
+    return Equation(outer_text_list[0], outer_text_list[1], outer_text_list[2], fields,
+                    outer_text_list[3], list_of_variables)
 
 
 # asks the user if they do wish to delete their selected item before doing so
@@ -1513,9 +1571,25 @@ def check_for_repeats(item):
     return is_there_a_repeat
 
 
+# is used to archive any user added fields
+def save_list_of_fields():
+    saved_fields_file = open("Dictionary/saved_fields.txt", 'w')
+    saved_fields_file.write("_=^=_& Stores all fields so user can select them")
+
+    for field in list_of_fields:
+        saved_fields_file.write(field)
+
+    saved_fields_file.close()
+
+
 # ======================================================================================================================
 # ============================================ NOW THE MAIN CODE BODY BEGINS ===========================================
 # ======================================================================================================================
+
+
+list_of_fields = get_file_lines("Dictionary/saved_fields.txt")  # get all the saved fields and put them into a list
+list_of_fields.pop(0)   # removes the first item since that is just a title line explaining the file
+list_of_fields = list(map(str.rstrip, list_of_fields))  # will remove all \n from each item
 
 
 # ---------------------------big title label---------------------------

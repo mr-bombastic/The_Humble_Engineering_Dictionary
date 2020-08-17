@@ -4,8 +4,8 @@ from Classes.logic import *  # will import all classes in that document
 
 class Equation(Logic):
 
-    def __init__(self, name, description, image, expression, variables):   # constructor for class
-        super().__init__(name, description, image)
+    def __init__(self, name, description, image, fields, expression, variables):   # constructor for class
+        super().__init__(name, description, image, fields)
 
         self._variables = variables
         self._num_of_var = len(variables)    # stores number of UNIQUE variables
