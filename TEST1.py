@@ -1,5 +1,10 @@
-st = "     this is string example....wow!     \n"
-print(st)
-t = st.rstrip()
-print(t)
-print("st")
+l = []
+inner = ["a", "b"]
+outer = ["1", "2", "3"]
+print(l)
+l.append(inner)
+print(l)
+l.append(outer)
+print(l)
+print(l[1])
+print(l[1][2])

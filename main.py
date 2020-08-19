@@ -68,8 +68,10 @@ window.option_add("*Text.selectBackground", color_highlight)
 window.option_add("*Text.selectForeground", text_color)
 window.option_add("*Entry.Background", color_mid)
 window.option_add("*Entry.readonlyBackground", color_light)
+window.option_add("*Entry.disabledBackground", color_light)
 window.option_add("*Entry.selectBackground", color_highlight)
 window.option_add("*Entry.selectForeground", text_color)
+window.option_add("*Entry.disabledForeground", text_color)
 
 window.option_add("*Label.Anchor", "w")  # default label anchor
 
@@ -277,20 +279,22 @@ def callback_get_widget_row(event):
     # if something was clicked before this will reset the colors so its not highlighted
     if previously_altered_widgets != "":
         for widget in previously_altered_widgets:
-            if widget.winfo_class() != "Canvas":
+            if widget.winfo_class() == "Radiobutton":
                 widget.configure(activebackground=color_mid, selectcolor=color_mid)
+            elif widget.winfo_class() == "Entry":
+                widget.configure(readonlybackground=color_mid, disabledbackground=color_mid)
             else:
                 widget.configure(bg=color_mid, highlightbackground=color_mid)
-                # display_info_expression_update_color(widget)
 
     # saves an array of all the widgets in the row
     widgets_to_alter = frm_results_inner.grid_slaves(row=r)
     for widget in widgets_to_alter:
-        if widget.winfo_class() != "Canvas":
+        if widget.winfo_class() == "Radiobutton":
             widget.configure(activebackground=color_dark, selectcolor=color_dark)  # changes widget color to highlight
+        elif widget.winfo_class() == "Entry":
+            widget.configure(readonlybackground=color_dark, disabledbackground=color_dark)
         else:
             widget.configure(bg=color_dark, highlightbackground=color_dark)
-            # display_info_expression_update_color(widget)
 
     previously_altered_widgets = widgets_to_alter  # saves array of widgets for if statement seen above
 
@@ -325,15 +329,15 @@ def print_results():
                                     activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                     indicatoron=False)
             radb_name.bind("<Button-1>", callback_get_widget_row)
-            radb_name.grid(sticky="n, s, e, w", row=r, column=0)
+            radb_name.grid(sticky="nsew", row=r, column=0)
 
             # will set the specific formatting based on the item type
             if result_type == "Variable" or result_type == "Constant":  # when displaying info about a variable/constant
-                canv_equ = create_latex_widget(result.get_symbol(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_symbol(), frm_results_inner, color_mid, False)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
-                canv_equ.grid(sticky="n, s, e, w", row=r, column=1)
+                canv_equ.grid(sticky="nsew", row=r, column=1)
 
-                canv_equ = create_latex_widget(result.get_units(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_units(), frm_results_inner, color_mid, False)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
 
                 if result_type == "Constant":
@@ -341,204 +345,193 @@ def print_results():
                                            activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                            indicatoron=False)
                     radb_val.bind("<Button-1>", callback_get_widget_row)
-                    radb_val.grid(sticky="n, s, e, w", row=r, column=2)
+                    radb_val.grid(sticky="nsew", row=r, column=2)
 
-                    canv_equ.grid(sticky="n, s, e, w", row=r, column=3)
+                    canv_equ.grid(sticky="nsew", row=r, column=3)
 
                 else:
-                    canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
+                    canv_equ.grid(sticky="nsew", row=r, column=2, columnspan=2)
 
             elif result_type == "Equation":  # when displaying info about an equation
-                canv_equ = create_latex_widget(result.get_expression(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_expression(), frm_results_inner, color_mid, False)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
-                canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+                canv_equ.grid(sticky="nsew", row=r, column=1, columnspan=3)
 
             elif result_type == "Method":  # when displaying info about a method
                 radb_descr = Radiobutton(frm_results_inner, text="Number of steps:" + result.get_num_steps(),
                                          activebackground=color_mid, activeforeground=text_color, borderwidth=0,
                                          selectcolor=color_mid, indicatoron=False)
                 radb_descr.bind("<Button-1>", callback_get_widget_row)
-                radb_descr.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+                radb_descr.grid(sticky="nsew", row=r, column=1, columnspan=3)
 
             elif result_type == "Logic":  # when displaying logic info
                 radb_log = Radiobutton(frm_results_inner, text="Click for more info", activebackground=color_mid,
                                        activeforeground=text_color, borderwidth=0, selectcolor=color_mid,
                                        indicatoron=False)
                 radb_log.bind("<Button-1>", callback_get_widget_row)
-                radb_log.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
+                radb_log.grid(sticky="nsew", row=r, column=1, columnspan=3)
 
             r += 1  # increment rows so that items will not overlap
         else:
             if result != 0:
                 Label(frm_results_inner, text=result, bg=color_mid, anchor="center",
                       font=("TkDefaultFont", fontsize + 2, "bold"))\
-                    .grid(sticky="n, s, e, w", row=r, column=0, columnspan=4)
+                    .grid(sticky="nsew", row=r, column=0, columnspan=4)
                 r += 1
 
 
 # will display a selected item's info in the display area
-def display_info(r):
+def display_info(result_row):
     # destroys anything that was in the display_info frame before
     destroy_item_info()
 
     btn_delete_item.configure(state="active")   # activate the delete button as an item would have been selected
 
     global selected_item
-    selected_item = search_results[r]  # get the search_result from the corresponding row
+    selected_item = search_results[result_row]  # get the search_result from the corresponding row
 
     # Name of the item
     msg_name = Message(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center',
                        width=m_len*30, font=("TkDefaultFont", fontsize + 10, "bold"))
     msg_name.bind("<Button-1>", lambda e: copy_to_clipboard(selected_item.get_name(), msg_name))
-    msg_name.grid(row=0, rowspan=2, column=0, columnspan=2, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
+    msg_name.grid(row=0, rowspan=2, column=0, columnspan=5, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
 
     # Button to edit item
     Button(frm_info_inner, text="Edit Item", command=lambda: add_edit_item_window(True),
-           activeforeground=text_color).grid(row=0, column=2, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
+           activeforeground=text_color).grid(row=0, column=5, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
 
-    item_type = get_item_type(selected_item)  # get the type of item being displayed
+    Label(frm_info_inner, text=get_item_type(selected_item)).grid(padx=spacing_out_x * 2, sticky="e", row=1, column=5)
 
-    if selected_item.get_image_location() != "No image association":
-        canv_image = Canvas(frm_info_inner, bg=color_light)
-        canv_image.create_image(0, 0, anchor="nw", image=selected_item.get_image())
-        canv_image.image = selected_item.get_image()
-        canv_image.grid(row=2, column=0, columnspan=4, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, e, w")
-        canv_image.configure(width=selected_item.get_image().width(), height=selected_item.get_image().height())
-
-        # trying to fix the width of the canvas so that the images will fit properly
-
-    r = 3  # set the row to an initial value
-
-    if item_type == "Logic":  # when displaying info about logic
-        Label(frm_info_inner, text="Logic").grid(padx=spacing_out_x * 2, sticky="e", row=1, column=2)
-
-        display_info_description(selected_item, r)
-        r += 1
-
-    elif item_type == "Variable":  # when displaying info about a variable
-        Label(frm_info_inner, text="Variable").grid(padx=spacing_out_x * 1.1, sticky="e", row=1, column=2)
-        display_info_var_const(selected_item, r)
-        r += 1
-
-        display_info_description(selected_item, r)
-        r += 1
-
-    elif item_type == "Constant":  # when displaying info about a constant
-        Label(frm_info_inner, text="Constant").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=2)
-        display_info_var_const(selected_item, r)
-        r += 1
-
-        display_info_description(selected_item, r)
-        r += 1
-
-    elif item_type == "Equation":  # when displaying info about a equation
-        Label(frm_info_inner, text="Equation").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=2)
-        r += 1
-
-        display_info_description(selected_item, r)
-        r += 1
-
-        r = display_info_equ(selected_item, r)
-
-    elif item_type == "Method":  # when displaying info about a method
-        Label(frm_info_inner, text="Method").grid(padx=spacing_out_x * 1.4, pady=spacing_out_y, sticky="e", row=1,
-                                                  column=2)
-
-        display_info_description(selected_item, r)
-        r += 1  # set starting row
-
-        # loops through each step and displays the steps information
-        for s in range(0, selected_item.get_num_steps()):
-            # add step title with items name in it
-            Label(frm_info_inner, text="Step " + str(s + 1) + ": " + selected_item.get_step(s).get_name(),
-                  font=("TkDefaultFont", fontsize + 6, "bold", "italic", "underline")) \
-                .grid(row=r, column=0, columnspan=4, sticky="n, s, e, w", pady=spacing_out_y)
-            r += 1
-
-            i_t = get_item_type(selected_item.get_step(s))
-            if i_t == "Variable" or i_t == "Constant":  # variable/constant step
-                display_info_var_const(selected_item.get_step(s), r)
-                r += 1
-
-            elif i_t == "Equation":  # equation step
-                r = display_info_equ(selected_item.get_step(s), r)
-                r += 1
-
-            display_info_description(selected_item.get_step(s), r)
-            r += 1
-
-    field_list = selected_item.get_fields()
-
-    Label(frm_info_inner, text="Associated Fields",
-          font=("TkDefaultFont", fontsize + 3, "italic", "underline")) \
-        .grid(row=r, column=0, columnspan=3)
-
-    r += 1
-
-    lst_fields = Listbox(frm_info_inner, selectmode="multiple", height=len(field_list))
-
-    # to indicate to user there is nothing to show
-    if len(field_list) == 1 and field_list == [""]:
-        lst_fields.insert("end", "No accociated fields")
-
-    else:   # if there is something to show
-        for field in field_list:
-            lst_fields.insert("end", field)
-
-    lst_fields.grid(column=0, columnspan=3, row=r, sticky="n, s, e, w")
+    display_info_logic(selected_item, 2, frm_info_inner, False)
 
 
-# will create and print a text widget with the description of the given item printed in it
-def display_info_description(item, r):
+def display_info_logic(item, print_row, frm, print_name):
+    item_type = get_item_type(item)  # get the type of item being displayed
+
+    # determines if the given item is the topmost based on how to print the name
+    # the top most level will not want to print a name thus we dont need to put that item in a LabelFrame
+    if print_name:  # when it is NOT the top most item
+        frm_item_holder = LabelFrame(frm, relief="ridge", width=frm.cget("width"))
+        frm_item_holder.grid(row=print_row, column=0, columnspan=6, sticky="nsew", padx=spacing_in)
+        frm_item_holder.columnconfigure(0, weight=1)
+        frm_item_holder.columnconfigure(1, weight=1)
+        frm_item_holder.columnconfigure(2, weight=1)
+        frm_item_holder.columnconfigure(3, weight=1)
+        frm_item_holder.columnconfigure(4, weight=1)
+        frm_item_holder.columnconfigure(5, weight=1)
+
+    else:   # when it IS
+        frm_item_holder = frm
+
+    # decides how to write the name, if it is false it will not write any name
+    if print_name == "equ":     # write name for a variable in an equation
+        Label(frm_item_holder, text=str(item.get_name()), font=("TkDefaultFont", fontsize+3, "underline")) \
+            .grid(row=print_row, column=0, columnspan=6, sticky="nsew")
+        print_row += 1
+    elif print_name:            # write name for a variable in a method
+        Label(frm_item_holder, text="Step " + str(print_name + 1) + ": " + item.get_name(),
+              font=("TkDefaultFont", fontsize + 6, "bold", "italic", "underline")) \
+            .grid(row=print_row, column=0, columnspan=6, sticky="nsew", pady=spacing_out_y)
+        print_row += 1
+
+    # display an image if there is something to display
+    if item.get_image_location() != "No image association":
+        canv_image = Canvas(frm_item_holder, bg=color_light)
+        canv_image.create_image(0, 0, anchor="nw", image=item.get_image())
+        canv_image.image = item.get_image()
+        canv_image.grid(row=print_row, column=0, columnspan=6, padx=spacing_out_y, pady=spacing_out_y, sticky="nsew")
+        canv_image.configure(width=item.get_image().width(), height=item.get_image().height())
+
+        print_row += 1
+
+    # display description info for items if there is something to display
     if item.get_description() != "":
-        txt_descr = Text(frm_info_inner, bg=color_light, width=35)
+        txt_descr = Text(frm_item_holder, bg=color_light, width=35)
         txt_descr.insert("insert", item.get_description())
 
         num_of_lines = int(len(item.get_description())/35)+1
 
         txt_descr.configure(state="disabled", height=num_of_lines)
-        txt_descr.grid(row=r, column=0, columnspan=4, sticky="n, s, e, w")
+        txt_descr.grid(row=print_row, column=0, columnspan=6, sticky="nsew")
 
+        print_row += 1
 
-# used to display information for equations. was taken out just to reduce repetition
-# does NOT display the name or description of the equation
-def display_info_equ(equ, row):
-    create_latex_widget(equ.get_expression(), frm_info_inner, frm_info_inner.cget("bg"))\
-        .grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
+    # add info of other item types
+    if item_type == "Variable" or item_type == "Constant":
+        Label(frm_item_holder, text="Symbol:", font=("TkDefaultFont", fontsize, "bold"))\
+            .grid(row=print_row, column=0, sticky="e")
+        create_latex_widget(item.get_symbol(), frm_item_holder, color_light, True).\
+            grid(row=print_row, column=1, sticky="w")
 
-    row += 1
+        if get_item_type(item) == "Constant":  # for a constant specifically
+            Label(frm_item_holder, text="Value:", font=("TkDefaultFont", fontsize, "bold"))\
+                .grid(row=print_row, column=2, sticky="e")
+            create_latex_widget(item.get_value(), frm_item_holder, color_light, True)\
+                .grid(row=print_row, column=3, sticky="nsew")
 
-    # header for list of variables/constants
-    Label(frm_info_inner, text="Featured variables/constants:",
-          font=("TkDefaultFont", fontsize + 3, "italic", "underline"))\
-        .grid(row=row, column=0, columnspan=3)
+        Label(frm_item_holder, text="Units:", font=("TkDefaultFont", fontsize, "bold"))\
+            .grid(row=print_row, column=4, sticky="e")
+        create_latex_widget(item.get_units(), frm_item_holder, color_light, True).\
+            grid(row=print_row, column=5, sticky="e")
 
-    row += 1
+        print_row += 1
 
-    # loop thorough each variable/constant and display each one's info
-    for variable in equ.get_all_variables():
-        # this is purely for spacing purposes
-        Label(frm_info_inner, text="", fg=color_mid, font=("TkDefaultFont", 1)).grid(row=row, column=0)
-        row += 1
+    elif item_type == "Equation":
+        create_latex_widget(item.get_expression(), frm_item_holder, color_light, True) \
+            .grid(row=print_row, column=0, columnspan=6, pady=spacing_out_y)
+        print_row += 1
 
-        Label(frm_info_inner, text=str(variable.get_name()), font=("TkDefaultFont", fontsize, "underline")) \
-            .grid(row=row, column=0)
-        row += 1
+        # header for list of variables/constants
+        Label(frm_item_holder, text="Featured variables/constants:",
+              font=("TkDefaultFont", fontsize + 3, "italic", "underline")) \
+            .grid(row=print_row, column=0, columnspan=6)
+        print_row += 1
 
-        display_info_description(variable, row)
-        row += 1
+        # loop thorough each variable/constant and display each one's info
+        for variable in item.get_all_variables():
+            print_row = display_info_logic(variable, print_row, frm_item_holder, "equ")
 
-        display_info_var_const(variable, row)
-        row += 1
+    elif item_type == "Method":
+        # loops through each step and displays the steps information
+        # this loop style is done so that the step NUMBER can be included in the naming
+        for s in range(0, item.get_num_steps()):
+            print_row = display_info_logic(item.get_step(s), print_row, frm_item_holder, s)
 
-    return row  # return the row so the above code knows where to start up again
+    Label(frm_item_holder, text="Associated Fields for " + item.get_name(),
+          font=("TkDefaultFont", fontsize, "italic", "underline")) \
+        .grid(row=print_row, column=0, columnspan=6)
+    print_row += 1
+
+    field_list = item.get_fields()
+    lst_fields = Listbox(frm_item_holder, selectmode="multiple", height=len(field_list))
+
+    # to indicate to user there is nothing to show
+    if len(field_list) == 1 and field_list == [""]:
+        lst_fields.insert("end", "No associated fields")
+
+    else:  # if there is something to show
+        for field in field_list:
+            lst_fields.insert("end", field)
+
+    lst_fields.grid(row=print_row, column=0, columnspan=6, sticky="nsew")
+    print_row += 1
+
+    return print_row
 
 
 # returns a canvas with the desired image within it
 # it will create and save an image if one has not previously been saved
-def create_latex_widget(string, container_widget, widget_color):
+def create_latex_widget(string, container_widget, widget_color, copy_item):
     # this check is necessary. If you don't check and there is nothing, the code will break
-    if string != "":
+    # also ensures the image creation is necessary
+
+    is_there_latex = True
+    # look to see if there are indicators that there is latex in the string
+    if string.find("\\") == -1 and string.find("^") == -1 and string.find("_") == -1 and \
+            string.find("{") == -1 and string.find("}") == -1:
+        is_there_latex = False
+
+    if string != "" and is_there_latex:
         latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
         file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
 
@@ -599,6 +592,18 @@ def create_latex_widget(string, container_widget, widget_color):
 
         image = PhotoImage(file=file_name)
 
+    elif not is_there_latex:   # if image creation is not necessary just return an entrybox
+        ety_text = Entry(container_widget, font=("TkDefaultFont", fontsize, "italic"))
+        ety_text.insert(0, string)
+        ety_text.configure(width=len(string) + 2, readonlybackground=widget_color, disabledbackground=widget_color)
+
+        if copy_item:   # if user should be able to copy item
+            ety_text.configure(state="readonly")
+        else:           # if user shouldn't be able to copy item
+            ety_text.configure(state="disabled", cursor="")
+
+        return ety_text
+
     else:   # in the case where something bad is sent
         image = PhotoImage(file="error.png")
         string = "Error copying text"
@@ -637,30 +642,6 @@ def remove_bad_chars(string):
         string = string.replace(char, '')
 
     return string
-
-
-# used to display information for variables and constants. was taken out just to reduce repetition
-# does NOT display names or descriptions
-def display_info_var_const(var_or_const, row):
-    frm_attribute = LabelFrame(frm_info_inner, text="click item to copy to clipboard", relief="ridge",
-                               labelanchor="se", font=("TkDefaultFont", fontsize - 3, "italic"))
-    frm_attribute.grid(row=row, column=0, columnspan=3, sticky="n, s, e, w")
-    frm_attribute.grid_columnconfigure(1, weight=1)
-    frm_attribute.grid_columnconfigure(3, weight=1)
-    frm_attribute.grid_columnconfigure(5, weight=1)
-
-    Label(frm_attribute, text="Symbol: ").grid(row=0, column=0, sticky="e")
-    create_latex_widget(var_or_const.get_symbol(), frm_attribute, color_light).grid(row=0, column=1, sticky="w")
-
-    if get_item_type(var_or_const) == "Constant":       # for a constant specifically
-        Label(frm_attribute, text="Value: ").grid(row=0, column=2, sticky="e")
-        ety_value = Entry(frm_attribute)
-        ety_value.insert(0, var_or_const.get_value())
-        ety_value.configure(state="readonly", width=len(var_or_const.get_value()))
-        ety_value.grid(row=0, column=3)
-
-    Label(frm_attribute, text="Units: ").grid(row=0, column=4, sticky="e")
-    create_latex_widget(var_or_const.get_units(), frm_attribute, color_light).grid(row=0, column=5, sticky="e")
 
 
 # get the corresponding string of each item type
@@ -965,7 +946,7 @@ def add_edit_item_window(to_edit):
     # the frame that will hold the canvas and all the other scrolling shite
     frm_add_edit_scroll_wrapper = Frame(small_win, highlightthickness=1, highlightbackground=accent_light)
     # reveals the frame holding the scrollbar, canvas, and wrapping frame
-    frm_add_edit_scroll_wrapper.grid(column=0, row=0, sticky="n, s, e, w")
+    frm_add_edit_scroll_wrapper.grid(column=0, row=0, sticky="nsew")
     # configures the row with the canvas to be able to expand
     frm_add_edit_scroll_wrapper.grid_rowconfigure(0, weight=1)
     frm_add_edit_scroll_wrapper.grid_columnconfigure(0, weight=1)
@@ -981,8 +962,8 @@ def add_edit_item_window(to_edit):
     canv_add_edit.configure(yscrollcommand=srlb_add_edit.set)
 
     # write out everything for the search results. They won't show up because
-    canv_add_edit.grid(column=0, row=0, sticky="n, s, e, w")
-    srlb_add_edit.grid(column=1, row=0, sticky="n, s, e, w")
+    canv_add_edit.grid(column=0, row=0, sticky="nsew")
+    srlb_add_edit.grid(column=1, row=0, sticky="nsew")
 
     # creates a window in which the frame is placed. This allows the frame to be scrolled through
     canv_add_edit.create_window((0, 0), window=frm_add_edit_inner, anchor='nw')
@@ -997,26 +978,26 @@ def add_edit_item_window(to_edit):
     opm_type = OptionMenu(frm_add_edit_inner, item_type_to_add_or_edit,
                           "Logic", "Constant", "Variable", "Equation", "Method",
                           command=lambda e: add_edit_item_option_display(e, frm_add_edit_inner, False))
-    opm_type.grid(column=0, columnspan=2, row=0, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    opm_type.grid(column=0, columnspan=2, row=0, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     Button(frm_add_edit_inner, text="Submit Item",
            command=lambda: item_submit(frm_add_edit_inner, to_edit, small_win)) \
-        .grid(column=2, row=0, sticky="n, s, e, w")
+        .grid(column=2, row=0, sticky="nsew")
 
     lab_name = Label(frm_add_edit_inner, text="Name:", highlightthickness=1, highlightbackground=accent_light)
-    lab_name.grid(column=0, row=1, sticky="n, s, e, w")
+    lab_name.grid(column=0, row=1, sticky="nsew")
     txt_name = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
-    txt_name.grid(column=1, columnspan=2, row=1, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_name.grid(column=1, columnspan=2, row=1, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     lab_def = Label(frm_add_edit_inner, text="Description:", highlightthickness=1, highlightbackground=accent_light)
-    lab_def.grid(column=0, row=2, sticky="n, s, e, w")
+    lab_def.grid(column=0, row=2, sticky="nsew")
     txt_def = Text(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
-    txt_def.grid(column=1, columnspan=2, row=2, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_def.grid(column=1, columnspan=2, row=2, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     lab_img = Label(frm_add_edit_inner, text="Image name:", highlightthickness=1, highlightbackground=accent_light)
-    lab_img.grid(column=0, row=3, sticky="n, s, e, w")
+    lab_img.grid(column=0, row=3, sticky="nsew")
     txt_img = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
-    txt_img.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_img.grid(column=1, columnspan=2, row=3, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     add_edit_field(frm_add_edit_inner, 4, selected_item, to_edit)
 
@@ -1080,11 +1061,11 @@ def add_edit_item_option_display(type_to_display, container_widget, to_edit):
 
         opm_type = OptionMenu(container_widget, selected_item_to_add,
                               "Logic", "Constant", "Variable", "Equation")
-        opm_type.grid(column=1, columnspan=2, row=4, sticky="n, s, e, w")
+        opm_type.grid(column=1, columnspan=2, row=4, sticky="nsew")
 
         Button(container_widget, text="Add Step:",
                command=lambda: add_edit_method_step_add(selected_item_to_add.get(), container_widget, to_edit, "")) \
-            .grid(column=0, row=4, sticky="n, s, e, w")
+            .grid(column=0, row=4, sticky="nsew")
 
         # will automatically display all the steps affiliated with this method when in editing mode
         if to_edit:
@@ -1098,20 +1079,18 @@ def add_edit_item_v_or_c_display(type_to_display, container_widget, to_edit, e_i
 
     lab_sym = Label(container_widget, text="Symbol:",
                     relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-    lab_sym.grid(column=0, row=r, sticky="n, s, e, w")
-    txt_sym = Entry(container_widget,
-                    relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-    txt_sym.grid(column=1, columnspan=2, row=r, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    lab_sym.grid(column=0, row=r, sticky="nsew")
+    txt_sym = Entry(container_widget, relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
+    txt_sym.grid(column=1, columnspan=2, row=r, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     r += 1
 
     if type_to_display == "Constant":  # for the constant specifically
         lab_val = Label(container_widget, text="Value:",
                         relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-        lab_val.grid(column=0, row=r, sticky="n, s, e, w")
-        txt_val = Entry(container_widget,
-                        relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-        txt_val.grid(column=1, columnspan=2, row=r, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+        lab_val.grid(column=0, row=r, sticky="nsew")
+        txt_val = Entry(container_widget, relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
+        txt_val.grid(column=1, columnspan=2, row=r, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
         # will add the edit item's stuff into the entry boxes
         if to_edit:
@@ -1121,10 +1100,9 @@ def add_edit_item_v_or_c_display(type_to_display, container_widget, to_edit, e_i
 
     lab_unit = Label(container_widget, text="Units:",
                      relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-    lab_unit.grid(column=0, row=r, sticky="n, s, e, w")
-    txt_unit = Entry(container_widget,
-                     relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-    txt_unit.grid(column=1, columnspan=2, row=r, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    lab_unit.grid(column=0, row=r, sticky="nsew")
+    txt_unit = Entry(container_widget, relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
+    txt_unit.grid(column=1, columnspan=2, row=r, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     r += 1
 
@@ -1142,9 +1120,9 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
 
     lab_equ = Label(container_widget, text="Equation:", highlightthickness=1,
                     highlightbackground=accent_light)
-    lab_equ.grid(column=0, row=start_row, sticky="n, s, e, w")
+    lab_equ.grid(column=0, row=start_row, sticky="nsew")
     txt_equ = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
-    txt_equ.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_equ.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     start_row += 1
 
@@ -1153,26 +1131,26 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
         txt_equ.insert(0, equ_to_display.get_expression())
 
     frm_equ_holder = Frame(container_widget)
-    frm_equ_holder.grid(column=0, columnspan=3, row=start_row, sticky="n, s, e, w")
+    frm_equ_holder.grid(column=0, columnspan=3, row=start_row, sticky="nsew")
     frm_equ_holder.columnconfigure(2, weight=1)
     frm_equ_holder.columnconfigure(3, weight=1)
 
     frm_add_btns_holder = Frame(frm_equ_holder)
-    frm_add_btns_holder.grid(column=2, row=1, sticky="n, s, e, w")
+    frm_add_btns_holder.grid(column=2, row=1, sticky="nsew")
     frm_add_btns_holder.columnconfigure(0, weight=1)
     frm_add_btns_holder.columnconfigure(1, weight=1)
 
     btn_add_var = Button(frm_add_btns_holder, text="Add Variable",
                          command=lambda: add_edit_item_equation_item_add("Variable", frm_equ_holder, False))
-    btn_add_var.grid(column=0, row=0, sticky="n, s, e, w")
+    btn_add_var.grid(column=0, row=0, sticky="nsew")
 
     btn_add_const = Button(frm_add_btns_holder, text="Add Constant",
                            command=lambda: add_edit_item_equation_item_add("Constant", frm_equ_holder, False))
-    btn_add_const.grid(column=1, row=0, sticky="n, s, e, w")
+    btn_add_const.grid(column=1, row=0, sticky="nsew")
 
     Label(frm_equ_holder, text="Featured variables/constants:", highlightthickness=1, highlightbackground=accent_light,
           font=("TkDefaultFont", fontsize + 2, "bold", "italic")) \
-        .grid(column=0, columnspan=2, row=1, sticky="n, s, e, w")
+        .grid(column=0, columnspan=2, row=1, sticky="nsew")
 
     # will automatically display all the variables and constants affiliated with this equation when in editing mode
     if to_edit:
@@ -1192,12 +1170,12 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
     if type_to_display == "Variable":
         Label(container_widget, text="Variable:",
               anchor="center", font=("TkDefaultFont", fontsize, "italic", "underline")) \
-            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="nsew")
 
     else:
         Label(container_widget, text="Constant:",
               anchor="center", font=("TkDefaultFont", fontsize, "italic", "underline")) \
-            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="nsew")
 
     btn_equ_item_delete = Button(container_widget, text="Delete this " + type_to_display,
                                  command=lambda: delete_added_item(container_widget, btn_equ_item_delete,
@@ -1207,16 +1185,16 @@ def add_edit_item_equation_item_add(item_to_add, container_widget, to_edit):
     start_row += 1
 
     lab_name = Label(container_widget, text="Name:", highlightthickness=1, highlightbackground=accent_light)
-    lab_name.grid(column=0, row=start_row, sticky="n, s, e, w")
+    lab_name.grid(column=0, row=start_row, sticky="nsew")
     txt_name = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
-    txt_name.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_name.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     start_row += 1
 
     lab_def = Label(container_widget, text="Description:", highlightthickness=1, highlightbackground=accent_light)
-    lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
+    lab_def.grid(column=0, row=start_row, sticky="nsew")
     txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
-    txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    txt_def.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     start_row += 1
 
@@ -1240,33 +1218,33 @@ def add_edit_method_step_add(type_to_display, container_widget, to_edit, item_to
 
         Label(container_widget, highlightthickness=1, text="Step " + str(step) + ": " + str(type_to_display),
               highlightbackground=accent_light, font=("TkDefaultFont", fontsize + 5, "bold", "italic")) \
-            .grid(column=0, columnspan=2, row=start_row, sticky="n, s, e, w")
+            .grid(column=0, columnspan=2, row=start_row, sticky="nsew")
 
         btn_method_item_delete = Button(container_widget, text="Delete this " + type_to_display,
                                         command=lambda: delete_added_item(container_widget, btn_method_item_delete,
                                                                           type_to_display, True))
-        btn_method_item_delete.grid(column=2, row=start_row, sticky="n, s, e, w")
+        btn_method_item_delete.grid(column=2, row=start_row, sticky="nsew")
 
         start_row += 1
 
         lab_name = Label(container_widget, text="Name:")
-        lab_name.grid(column=0, row=start_row, sticky="n, s, e, w")
+        lab_name.grid(column=0, row=start_row, sticky="nsew")
         txt_name = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
-        txt_name.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+        txt_name.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
         start_row += 1
 
         lab_def = Label(container_widget, text="Description:", highlightthickness=1, highlightbackground=accent_light)
-        lab_def.grid(column=0, row=start_row, sticky="n, s, e, w")
+        lab_def.grid(column=0, row=start_row, sticky="nsew")
         txt_def = Text(container_widget, highlightthickness=1, highlightbackground=accent_light)
-        txt_def.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+        txt_def.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
         start_row += 1
 
         lab_img = Label(container_widget, text="Image name:", highlightthickness=1, highlightbackground=accent_light)
-        lab_img.grid(column=0, row=start_row, sticky="n, s, e, w")
+        lab_img.grid(column=0, row=start_row, sticky="nsew")
         txt_img = Entry(container_widget, highlightthickness=1, highlightbackground=accent_light)
-        txt_img.grid(column=1, columnspan=2, row=start_row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+        txt_img.grid(column=1, columnspan=2, row=start_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
         start_row += 1
 
@@ -1350,9 +1328,9 @@ def add_edit_field(container_widget, row, item_to_display, to_edit):
 
     lab_field = Label(container_widget, text="Corresponding Fields:", highlightthickness=1,
                       highlightbackground=accent_light)
-    lab_field.grid(column=0, row=row, sticky="n, s, e, w")
+    lab_field.grid(column=0, row=row, sticky="nsew")
     lst_field = Listbox(container_widget, selectmode="multiple")
-    lst_field.grid(column=1, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    lst_field.grid(column=1, row=row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     if to_edit and item_to_display.get_fields() != ():
         for field in item_to_display.get_fields():
@@ -1366,7 +1344,7 @@ def add_edit_field(container_widget, row, item_to_display, to_edit):
     # the *list_of_fields will break list_of_fields into individual pieces which will then be sent to OptionMenu
     opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
                            command=lambda e: add_edit_field_logic(e, lst_field, opm_field, container_widget, row))
-    opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+    opm_field.grid(column=2, row=row, sticky="nsew", padx=spacing_in, pady=spacing_in)
 
     return row + 1
 
@@ -1422,7 +1400,7 @@ def add_edit_field_logic(choice, lst, opm, container_widget, row):
                             opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
                                                    command=lambda e: add_edit_field_logic(e, lst, opm_field,
                                                                                           container_widget, row))
-                            opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+                            opm_field.grid(column=2, row=row, sticky="nsew", padx=spacing_in, pady=spacing_in)
                             break
 
                     else:   # when there is already a field in the data base the loop will stop
@@ -1437,37 +1415,39 @@ def add_edit_field_logic(choice, lst, opm, container_widget, row):
         lst.configure(height=height)
 
 
+# ---------------------------------------------
+# ---------------------------------------------
+# ---------------------------------------------
+# ---------------------------------------------
+# ---------------------------------------------
+
+
 # will add or edit the item the user has given
 def item_submit(container_widget, to_edit, top_level_window):
     list_of_widgets = container_widget.winfo_children()
-    item_type_selected = item_type_to_add_or_edit.get()
     fields_selected = ""
 
     item_to_save = ""
-    outer_list_of_txt_input = []
     full_list_of_txt_input = []     # used for checking all text input for irregularities
 
     # collect all the text boxes into a list
     for item in list_of_widgets:
         if item.winfo_class() == "Entry":
-            outer_list_of_txt_input.append(item.get().rstrip())
             full_list_of_txt_input.append(item.get().rstrip())
 
         elif item.winfo_class() == "Text":
-            outer_list_of_txt_input.append(item.get(1.0, "end").rstrip())
             full_list_of_txt_input.append(item.get(1.0, "end").rstrip())
 
         elif item.winfo_class() == "Listbox":
             fields_selected = item.get(0, "end")
 
         elif item.winfo_class() == "Frame":
-            list_of_frame_widgets = item.winfo_children()
-            for inner_item in list_of_frame_widgets:
-                if inner_item.winfo_class() == "Entry":
-                    full_list_of_txt_input.append(inner_item.get().rstrip())
+            for frm_child in item.winfo_children():
+                if frm_child.winfo_class() == "Entry":
+                    full_list_of_txt_input.append(frm_child.get().rstrip())
 
-                elif inner_item.winfo_class() == "Text":
-                    full_list_of_txt_input.append(inner_item.get(1.0, "end").rstrip())
+                elif frm_child.winfo_class() == "Text":
+                    full_list_of_txt_input.append(frm_child.get(1.0, "end").rstrip())
 
     is_special_char_present = False
 
@@ -1478,134 +1458,115 @@ def item_submit(container_widget, to_edit, top_level_window):
     if full_list_of_txt_input[0] == '':     # if no name has been given to the item
         alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
                    False)
-
     elif is_special_char_present:
         alert_user("In one of the fields you have used either the character '&' or '§'. These are not allowed. "
                    "Please change them.", False)
 
-    else:
-        # will start the save logic corresponding to what the user wants to save
-        if item_type_selected == "Logic":
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
+    else:   # actually create the item to save
+        item_to_save = item_submit_logic(full_list_of_txt_input, list_of_widgets, fields_selected,
+                                         item_type_to_add_or_edit.get())
 
-        elif item_type_selected == "Variable":
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
+    # checks to see if there is a repeat of the item
+    if check_for_repeats(item_to_save):
+        alert_user("There is an item already in the dictionary that matches what you just entered.\n"
+                   "This repeated item will not be added to the dictionary.", False)
 
-        elif item_type_selected == "Constant":
-            item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
+    else:  # if there is no repeat then the item will be saved
+        # if the user wants to edit an item then the old item is moved to the trash
+        if to_edit:
+            move_item_to_trash(selected_item)
 
-        elif item_type_selected == "Equation":
-            item_to_save = item_submit_equ(outer_list_of_txt_input, fields_selected,
-                                           list_of_widgets[-1].winfo_children())
-
-        elif item_type_selected == "Method":
-            last_child = LabelFrame()
-            list_of_steps = []
-            list_of_frames = []
-            i_entry = 3
-            i_frame = 0
-
-            # get all frames in the list_of_widgets. Used only for equations
-            for item in list_of_widgets:
-                if item.winfo_class() == "Frame":
-                    list_of_frames.append(item)
-
-            for child in list_of_widgets:
-                if last_child.winfo_class() == "Label" and child.winfo_class() == "Button":
-                    # will keep characters after the ":" then remove the space just before the actual word
-                    text = last_child.cget("text").rsplit(":", 1)[1]
-                    check_text = text[1:]
-
-                    if check_text == "Variable":
-                        list_of_steps.append(
-                            item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 4], fields_selected))
-                        i_entry += 4
-
-                    elif check_text == "Constant":
-                        list_of_steps.append(
-                            item_submit_log_var_const(outer_list_of_txt_input[i_entry:i_entry + 5], fields_selected))
-                        i_entry += 5
-
-                    elif check_text == "Logic":
-                        # logic_text is stop gap until logic images are implemented
-                        logic_text = outer_list_of_txt_input[i_entry:i_entry + 3]
-
-                        list_of_steps.append(item_submit_log_var_const(logic_text, fields_selected))
-                        i_entry += 2
-
-                    elif check_text == "Equation":
-                        list_of_steps.append(
-                            item_submit_equ(outer_list_of_txt_input[i_entry:i_entry + 3], fields_selected,
-                                            list_of_frames[i_frame].winfo_children()))
-                        i_frame += 1
-                        i_entry += 3
-
-                last_child = child
-
-            item_to_save = Method(outer_list_of_txt_input[0], outer_list_of_txt_input[1], outer_list_of_txt_input[2],
-                                  fields_selected, list_of_steps)
-
-        # checks to see if there is a repeat of the item
-        if check_for_repeats(item_to_save):
-            alert_user("There is an item already in the dictionary that matches what you just entered.\n"
-                       "This repeated item will not be added to the dictionary.", False)
-
-        else:   # if there is no repeat then the item will be saved
-            # if the user wants to edit an item then the old item is moved to the trash
-            if to_edit:
-                move_item_to_trash(selected_item)
-
-            save_item(item_to_save)
-            save_list_of_fields()       # done now so that if previous addition was canceled it would not be saved
-            top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
+        save_item(item_to_save)
+        save_list_of_fields()  # done now so that if previous addition was canceled it would not be saved
+        top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
 
 
-# will return a logic, variable, or constant depending on the length of list given
-def item_submit_log_var_const(text_list, fields):
-    if len(text_list) < 5:
-        return Logic(text_list[0], text_list[1], text_list[2], fields)
+def item_submit_logic(list_of_txt_input, widget_list, fields_selected, item_type):
+    item_to_save = Logic(*list_of_txt_input[0:3], fields_selected)  # logic is default save type
 
-    elif len(text_list) == 5:
-        return Variable(text_list[0], text_list[1], text_list[2], fields, text_list[3], text_list[4])
+    # if something other than logic to be saved this will determine what that will be
+    if item_type == "Variable":
+        item_to_save = Variable(*list_of_txt_input[0:3], fields_selected, *list_of_txt_input[3:5])
 
-    else:
-        return Constant(text_list[0], text_list[1], text_list[2], fields, text_list[3], text_list[4], text_list[5])
+    elif item_type == "Constant":
+        item_to_save = Constant(*list_of_txt_input[0:3], fields_selected, *list_of_txt_input[3:6])
 
+    elif item_type == "Equation":
+        equ_last_frame_child = Radiobutton()
+        list_of_var_const = []
+        index_txt_input = 4     # this is when text for the var/constants will start showing up
 
-# will return a equation filled out equation
-def item_submit_equ(outer_text_list, fields, equ_frame_children):
-    equ_frame_txt_box_text = []
+        # will find the frame and then save all the contents
+        list_frm_children = ""
+        for widget in widget_list:
+            if widget.winfo_class() == "Frame":
+                list_frm_children = widget.winfo_children()
+                break   # loop doesnt need to continue once the frame is found
 
-    # get list of entry boxes inside the equation frame
-    for item in equ_frame_children:
-        if item.winfo_class() == "Entry":
-            equ_frame_txt_box_text.append(item.get().rstrip())
+        for child in list_frm_children:
+            # will look through equ frame to decide what variable has been added
+            if equ_last_frame_child.winfo_class() == "Label" and child.winfo_class() == "Button":
+                if equ_last_frame_child.cget("text") == "Variable:":
+                    text_list = index_txt_input[index_txt_input:index_txt_input + 4]
+                    text_list.insert(2, "No image association")   # this is cause variables in equ are not given images
+                    list_of_var_const.append(item_submit_logic(text_list, widget_list, fields_selected, "Variable"))
+                    index_txt_input += 4
 
-        elif item.winfo_class() == "Text":
-            equ_frame_txt_box_text.append(item.get(1.0, "end").rstrip())
+                elif equ_last_frame_child.cget("text") == "Constant:":
+                    text_list = index_txt_input[index_txt_input:index_txt_input + 5]
+                    text_list.insert(2, "No image association")   # this is cause constants in equ are not given images
+                    list_of_var_const.append(item_submit_logic(text_list, widget_list, fields_selected, "Constant"))
+                    index_txt_input += 5
 
-    equ_last_frame_child = Radiobutton()
-    list_of_variables = []
-    i_entry = 0
+            equ_last_frame_child = child
 
-    for child in equ_frame_children:
-        if equ_last_frame_child.winfo_class() == "Label" and child.winfo_class() == "Button":
-            if equ_last_frame_child.cget("text") == "Variable:":
-                text_list = equ_frame_txt_box_text[i_entry:i_entry + 4]
-                text_list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(text_list, fields))
-                i_entry += 4
+        item_to_save = Equation(*list_of_txt_input[0:3], fields_selected, list_of_txt_input[3], list_of_var_const)
 
-            elif equ_last_frame_child.cget("text") == "Constant:":
-                text_list = equ_frame_txt_box_text[i_entry:i_entry + 5]
-                text_list.insert(2, None)
-                list_of_variables.append(item_submit_log_var_const(text_list, fields))
-                i_entry += 5
+    elif item_type == "Method":
+        last_child = Radiobutton()
+        list_of_steps = []
+        index_txt_input = 3
 
-        equ_last_frame_child = child
+        for child in widget_list:
+            # will look through toplevel to decide what the step type is
+            if last_child.winfo_class() == "Label" and child.winfo_class() == "Button":
+                # will keep characters after the ":" then remove the space just before the actual word
+                text = last_child.cget("text").rsplit(":", 1)[1]
+                check_text = text[1:]
 
-    return Equation(outer_text_list[0], outer_text_list[1], outer_text_list[2], fields,
-                    outer_text_list[3], list_of_variables)
+                if check_text == "Variable":
+                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 5],
+                                                           widget_list, fields_selected, "Variable"))
+                    index_txt_input += 4
+
+                elif check_text == "Constant":
+                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 6],
+                                                           widget_list, fields_selected, "Constant"))
+                    index_txt_input += 5
+
+                elif check_text == "Logic":
+                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 3],
+                                                           widget_list, fields_selected, "Logic"))
+                    index_txt_input += 3
+
+                elif check_text == "Equation":
+                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 3],
+                                                           widget_list, fields_selected, "Equation"))
+                    index_txt_input += 3
+
+                    # will remove the most recent frame so that future equ's will not be confused
+                    w = 0
+                    while True:
+                        if widget_list[w].winfo_class() == "Frame":
+                            widget_list.pop(w)
+                            break  # loop doesnt need to continue once the frame is found
+                        else:
+                            w += 1
+            last_child = child
+
+        item_to_save = Method(*list_of_txt_input[0:3], fields_selected, list_of_steps)
+
+    return item_to_save
 
 
 # asks the user if they do wish to delete their selected item before doing so
@@ -1704,65 +1665,65 @@ lab_title.grid(column=0, columnspan=2, row=0, padx=spacing_out_x, pady=spacing_o
 
 # ---------------------------left side frame stuff---------------------------
 frm_left = Frame(window, bg=color_dark)
-frm_left.grid(column=0, row=1, sticky="n, s, e, w", padx=spacing_out_x, pady=spacing_out_y)
+frm_left.grid(column=0, row=1, sticky="nsew", padx=spacing_out_x, pady=spacing_out_y)
 frm_left.grid_rowconfigure(2, weight=1)
 
 
 # ---------------------------area for check boxes of what to include in search---------------------------
 frm_checkbox_holder = LabelFrame(frm_left, text="What to include in the search?",
                                  highlightthickness=1, highlightbackground=accent_light)
-frm_checkbox_holder.grid(column=1, row=0, sticky="n, s, e, w")
+frm_checkbox_holder.grid(column=1, row=0, sticky="nsew")
 frm_checkbox_holder.grid_columnconfigure(0, weight=1)
 frm_checkbox_holder.grid_columnconfigure(1, weight=1)
 
 # frame that holds the checkboxes with the types of items to look though along with checkboxes
 frm_item_type_checkboxs = LabelFrame(frm_checkbox_holder, text="Item Types:",
                                      highlightthickness=1, highlightbackground=accent_light)
-frm_item_type_checkboxs.grid(column=0, row=0, sticky="n, s, e, w", pady=spacing_in * 2, padx=spacing_in * 2)
+frm_item_type_checkboxs.grid(column=0, row=0, sticky="nsew", pady=spacing_in * 2, padx=spacing_in * 2)
 # checkboxes for the various areas one can search
 Checkbutton(frm_item_type_checkboxs, text="Logic", variable=search_logic) \
-    .grid(column=0, row=0, sticky="n, s, e, w")
+    .grid(column=0, row=0, sticky="nsew")
 Checkbutton(frm_item_type_checkboxs, text="Variables", variable=search_variables) \
-    .grid(column=1, row=0, sticky="n, s, e, w")
+    .grid(column=1, row=0, sticky="nsew")
 Checkbutton(frm_item_type_checkboxs, text="Constants", variable=search_constants) \
-    .grid(column=2, row=0, sticky="n, s, e, w")
+    .grid(column=2, row=0, sticky="nsew")
 Checkbutton(frm_item_type_checkboxs, text="Equations", variable=search_equations) \
-    .grid(column=0, row=1, sticky="n, s, e, w")
+    .grid(column=0, row=1, sticky="nsew")
 Checkbutton(frm_item_type_checkboxs, text="Methods", variable=search_methods) \
-    .grid(column=2, row=1, sticky="n, s, e, w")
+    .grid(column=2, row=1, sticky="nsew")
 
 # frame that holds the checkboxes with the places to look though along with checkboxes
 frm_places_checkboxs = LabelFrame(frm_checkbox_holder, text="Places to Look:",
                                   relief=relief_style, highlightthickness=1, highlightbackground=accent_light)
-frm_places_checkboxs.grid(column=1, row=0, rowspan=2, sticky="n, s, e, w", pady=spacing_in * 2, padx=spacing_in * 2)
+frm_places_checkboxs.grid(column=1, row=0, rowspan=2, sticky="nsew", pady=spacing_in * 2, padx=spacing_in * 2)
 # checkboxes for the various areas one can search
 Checkbutton(frm_places_checkboxs, text="Name", variable=search_names) \
-    .grid(column=0, row=0, sticky="n, s, e, w")
+    .grid(column=0, row=0, sticky="nsew")
 Checkbutton(frm_places_checkboxs, text="Description", variable=search_description) \
-    .grid(column=1, row=0, sticky="n, s, e, w")
+    .grid(column=1, row=0, sticky="nsew")
 Checkbutton(frm_places_checkboxs, text="Symbol", variable=search_symbol) \
-    .grid(column=0, row=1, sticky="n, s, e, w")
+    .grid(column=0, row=1, sticky="nsew")
 Checkbutton(frm_places_checkboxs, text="Value", variable=search_value) \
-    .grid(column=1, row=1, sticky="n, s, e, w")
+    .grid(column=1, row=1, sticky="nsew")
 Checkbutton(frm_places_checkboxs, text="Units", variable=search_units) \
-    .grid(column=0, row=2, sticky="n, s, e, w")
+    .grid(column=0, row=2, sticky="nsew")
 Checkbutton(frm_places_checkboxs, text="Field", variable=search_field) \
-    .grid(column=1, row=2, sticky="n, s, e, w")
+    .grid(column=1, row=2, sticky="nsew")
 
 # button to show everything from the selected item types
 btn_search = Button(frm_checkbox_holder, text="Show everything from selected item types.", command=print_all)
 
-btn_search.grid(column=0, row=1, sticky="n, s, e, w", padx=spacing_in * 1.45, pady=spacing_in * 1.45)
+btn_search.grid(column=0, row=1, sticky="nsew", padx=spacing_in * 1.45, pady=spacing_in * 1.45)
 
 # ---------------------------area for text input to search stuff---------------------------
 # the frame for the accompanying stuff to go in
 frm_input = LabelFrame(frm_left, text="What do you want to search for?",
                        highlightthickness=1, highlightbackground=accent_light, highlightcolor=accent_light)
-frm_input.grid(column=1, row=1, sticky="n, s, e, w", pady=spacing_out_y * 2)
+frm_input.grid(column=1, row=1, sticky="nsew", pady=spacing_out_y * 2)
 
 # text box to get user input
 txt_search = Entry(frm_input, highlightthickness=1, highlightbackground=accent_light)
-txt_search.grid(column=0, columnspan=2, row=1, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+txt_search.grid(column=0, columnspan=2, row=1, sticky="nsew", padx=spacing_in, pady=spacing_in)
 txt_search.bind("<Return>", lambda x: search())  # allows user to press enter to search
 
 # button to begin searching. Calls the "print_search" function that starts the process of printing results
@@ -1775,7 +1736,7 @@ frm_input.grid_columnconfigure(0, weight=1)
 # ---------------------------area for search results---------------------------
 # wrapper frame for everything going into the search results area
 frm_results = LabelFrame(frm_left, text="Search results", highlightthickness=1, highlightbackground=accent_light)
-frm_results.grid(column=1, row=2, sticky="n, s, e, w")
+frm_results.grid(column=1, row=2, sticky="nsew")
 # this stuff is for sorting out the resizing of the middle row and frm_results_scroll_wrapper
 frm_results.grid_rowconfigure(1, weight=1)
 
@@ -1786,7 +1747,7 @@ frm_results_titlerow.grid(column=0, columnspan=2, row=0, sticky="w")
 # the frame that will hold the canvas and all the other scrolling shite
 frm_results_scroll_wrapper = Frame(frm_results, highlightthickness=1, highlightbackground=accent_light)
 # reveals the frame holding the scrollbar, canvas, and wrapping frame
-frm_results_scroll_wrapper.grid(column=0, columnspan=2, row=1, sticky="n, s, e, w")
+frm_results_scroll_wrapper.grid(column=0, columnspan=2, row=1, sticky="nsew")
 # configures the row with the canvas to be able to expand
 frm_results_scroll_wrapper.grid_rowconfigure(0, weight=1)
 frm_results_scroll_wrapper.grid_columnconfigure(0, weight=1)
@@ -1802,8 +1763,8 @@ srlb_results = Scrollbar(frm_results_scroll_wrapper, orient="vertical", command=
 canv_results.configure(yscrollcommand=srlb_results.set)
 
 # write out everything for the search results. They won't show up because
-canv_results.grid(column=0, row=0, sticky="n, s, e, w")
-srlb_results.grid(column=1, row=0, sticky="n, s, e, w")
+canv_results.grid(column=0, row=0, sticky="nsew")
+srlb_results.grid(column=1, row=0, sticky="nsew")
 
 # creates a window in which the frame is placed. This allows the frame to be scrolled through
 canv_results.create_window((0, 0), window=frm_results_inner, anchor='nw')
@@ -1838,7 +1799,7 @@ lab_result_spacing.grid(row=0, column=3)
 
 # ---------------------------area to display item information---------------------------
 frm_info = Frame(window)    # the frame for the accompanying stuff to go in
-frm_info.grid(column=1, row=1, sticky="n, s, e, w", padx=spacing_out_x, pady=spacing_out_y)
+frm_info.grid(column=1, row=1, sticky="nsew", padx=spacing_out_x, pady=spacing_out_y)
 
 # the outer frame that will hold all information stuff
 frm_info_scroll_wrapper = Frame(frm_info, bg=color_mid, highlightthickness=1, highlightbackground=accent_light)
@@ -1853,15 +1814,14 @@ srlb_info = Scrollbar(frm_info_scroll_wrapper, orient="vertical", command=canv_i
 canv_info.configure(yscrollcommand=srlb_info.set)
 
 # display in everything for the search results. They won't show up because frm_info_scroll_wrapper is not displayed yet
-canv_info.grid(column=0, row=0, sticky="n, s, e, w")
-srlb_info.grid(column=1, row=0, sticky="n, s, e, w")
+canv_info.grid(column=0, row=0, sticky="nsew")
+srlb_info.grid(column=1, row=0, sticky="nsew")
 
 # creates a window in which the frame is placed. This allows the frame to be scrolled through
 canv_info.create_window((0, 0), window=frm_info_inner, anchor='nw')
 
 # calls the function that will actually enable the scrolling. I don't understand why this works so leave it alone
-frm_info_inner.bind("<Configure>",
-                    lambda e: canv_info.configure(scrollregion=canv_info.bbox("all")))
+frm_info_inner.bind("<Configure>", lambda e: canv_info.configure(scrollregion=canv_info.bbox("all")))
 
 # this stuff is for sorting out the resizing of the frame holding the scrolling canvas
 frm_info.grid_columnconfigure(0, weight=1)
@@ -1871,9 +1831,12 @@ frm_info_scroll_wrapper.grid_rowconfigure(0, weight=1)
 frm_info_inner.grid_columnconfigure(0, weight=1)
 frm_info_inner.grid_columnconfigure(1, weight=1)
 frm_info_inner.grid_columnconfigure(2, weight=1)
+frm_info_inner.grid_columnconfigure(3, weight=1)
+frm_info_inner.grid_columnconfigure(4, weight=1)
+frm_info_inner.grid_columnconfigure(5, weight=1)
 
 
-frm_info_scroll_wrapper.grid(column=0, row=0, sticky="n, s, e, w")
+frm_info_scroll_wrapper.grid(column=0, row=0, sticky="nsew")
 
 
 selected_item = Method("", "", "", "", [""])
