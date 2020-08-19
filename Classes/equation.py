@@ -20,11 +20,8 @@ class Equation(Logic):
         # var_symbols is necessary so you can ensure your assigning the correct values to variables
         self._equ = Expression(expression, var_symbols)
 
-    def get_equation_latex(self):   # will return latex version of equation
+    def get_expression(self):   # will return latex version of equation
         return self._expression
-
-    def get_equation_normal(self):   # will return the normal version of equation
-        return self._equ.__repr__()
 
     def get_all_variables(self):    # gives back every variable/constant in equation
         return self._variables

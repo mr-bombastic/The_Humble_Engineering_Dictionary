@@ -35,7 +35,6 @@ right_side_thickness = 150
 # stuff that transcends various dimensions
 previously_altered_widgets = []
 step_num = 0
-selected_item = None
 search_results = []  # create an array of the results
 
 # main window stuff
@@ -76,9 +75,11 @@ window.option_add("*Label.Anchor", "w")  # default label anchor
 
 window.option_add("*relief", 'flat')
 window.option_add("*Button.relief", 'ridge')
+window.option_add("*selectBorderwidth", 0)
 window.option_add("*highlightthickness", 1)
-window.option_add("*Canvas.highlightThickness", 0)
+window.option_add("*Canvas.highlightthickness", 0)
 window.option_add("*Text.highlightthickness", 0)
+window.option_add("*Listbox.highlightthickness", 0)
 
 window.option_add("*Text.Wrap", "word")
 window.option_add("*Text.width", 30)
@@ -348,7 +349,7 @@ def print_results():
                     canv_equ.grid(sticky="n, s, e, w", row=r, column=2, columnspan=2)
 
             elif result_type == "Equation":  # when displaying info about an equation
-                canv_equ = create_latex_widget(result.get_equation_latex(), frm_results_inner, color_mid)
+                canv_equ = create_latex_widget(result.get_expression(), frm_results_inner, color_mid)
                 canv_equ.bind("<Button-1>", callback_get_widget_row)
                 canv_equ.grid(sticky="n, s, e, w", row=r, column=1, columnspan=3)
 
@@ -411,9 +412,15 @@ def display_info(r):
     if item_type == "Logic":  # when displaying info about logic
         Label(frm_info_inner, text="Logic").grid(padx=spacing_out_x * 2, sticky="e", row=1, column=2)
 
+        display_info_description(selected_item, r)
+        r += 1
+
     elif item_type == "Variable":  # when displaying info about a variable
         Label(frm_info_inner, text="Variable").grid(padx=spacing_out_x * 1.1, sticky="e", row=1, column=2)
         display_info_var_const(selected_item, r)
+        r += 1
+
+        display_info_description(selected_item, r)
         r += 1
 
     elif item_type == "Constant":  # when displaying info about a constant
@@ -421,15 +428,23 @@ def display_info(r):
         display_info_var_const(selected_item, r)
         r += 1
 
+        display_info_description(selected_item, r)
+        r += 1
+
     elif item_type == "Equation":  # when displaying info about a equation
         Label(frm_info_inner, text="Equation").grid(padx=spacing_out_x * 0.9, sticky="e", row=1, column=2)
-        display_info_equ(selected_item, r+1)
+        r += 1
+
+        display_info_description(selected_item, r)
+        r += 1
+
+        r = display_info_equ(selected_item, r)
 
     elif item_type == "Method":  # when displaying info about a method
         Label(frm_info_inner, text="Method").grid(padx=spacing_out_x * 1.4, pady=spacing_out_y, sticky="e", row=1,
                                                   column=2)
-        display_info_description(selected_item, r)
 
+        display_info_description(selected_item, r)
         r += 1  # set starting row
 
         # loops through each step and displays the steps information
@@ -452,10 +467,25 @@ def display_info(r):
             display_info_description(selected_item.get_step(s), r)
             r += 1
 
-    # put item description at the end for all these values as it will make the most sense
-    # all items have their descriptions placed before all the other components
-    if item_type != "Method":
-        display_info_description(selected_item, r)
+    field_list = selected_item.get_fields()
+
+    Label(frm_info_inner, text="Associated Fields",
+          font=("TkDefaultFont", fontsize + 3, "italic", "underline")) \
+        .grid(row=r, column=0, columnspan=3)
+
+    r += 1
+
+    lst_fields = Listbox(frm_info_inner, selectmode="multiple", height=len(field_list))
+
+    # to indicate to user there is nothing to show
+    if len(field_list) == 1 and field_list == [""]:
+        lst_fields.insert("end", "No accociated fields")
+
+    else:   # if there is something to show
+        for field in field_list:
+            lst_fields.insert("end", field)
+
+    lst_fields.grid(column=0, columnspan=3, row=r, sticky="n, s, e, w")
 
 
 # will create and print a text widget with the description of the given item printed in it
@@ -473,7 +503,7 @@ def display_info_description(item, r):
 # used to display information for equations. was taken out just to reduce repetition
 # does NOT display the name or description of the equation
 def display_info_equ(equ, row):
-    create_latex_widget(equ.get_equation_latex(), frm_info_inner, frm_info_inner.cget("bg"))\
+    create_latex_widget(equ.get_expression(), frm_info_inner, frm_info_inner.cget("bg"))\
         .grid(row=row, column=0, columnspan=3, pady=spacing_out_y)
 
     row += 1
@@ -481,7 +511,7 @@ def display_info_equ(equ, row):
     # header for list of variables/constants
     Label(frm_info_inner, text="Featured variables/constants:",
           font=("TkDefaultFont", fontsize + 3, "italic", "underline"))\
-        .grid(row=row, column=0, columnspan=3, )
+        .grid(row=row, column=0, columnspan=3)
 
     row += 1
 
@@ -640,10 +670,13 @@ def item_to_string(item):
     item_string = str(str(item.get_name()) + '&' + str(item.get_description()) + '&' +
                       str(item.get_image_location()) + '&')
 
-    for field in item.get_fields:
-        item_string += str(field) + ','
+    if item.get_fields() == ():   # when nothing has been entered
+        item_string += ''
 
-    item_string.replace(',', '', -1)
+    else:   # when something has been entered
+        for field in item.get_fields():
+            item_string += str(field) + ','
+        item_string = item_string[:-1]  # used to get rid of the last comma since it's not necessary
 
     if item_type == "Variable":  # when displaying info about a variable
         item_string += str('&' + str(item.get_symbol()) + '&' + str(item.get_units()))
@@ -652,7 +685,7 @@ def item_to_string(item):
         item_string += str('&' + str(item.get_symbol()) + '&' + str(item.get_value()) + '&' + str(item.get_units()))
 
     elif item_type == "Equation":  # when displaying info about a equation
-        item_string += str('&' + str(item.get_equation_latex()))
+        item_string += str('&' + str(item.get_expression()))
 
         for var in item.get_all_variables():
             item_string += "&type:" + str(get_item_type(var)) + '&' + item_to_string(var).replace("\n", "")
@@ -665,10 +698,7 @@ def item_to_string(item):
 
         item_string += "&end:Method"
 
-    else:
-        return False
-
-    item_string = "\n" + item_string.replace("\\", "§")
+    item_string = item_string.replace("\\", "§")
 
     return item_string
 
@@ -679,8 +709,8 @@ def string_to_item(lines, item_type):
     if isinstance(lines, str):
         items = string_to_item_conversion_logic(lines, item_type)
     else:  # when an array is passed
-        for line in lines:
-            result = string_to_item_conversion_logic(line, item_type)
+        for li in lines:
+            result = string_to_item_conversion_logic(li, item_type)
             if result:
                 items.append(result)
 
@@ -844,18 +874,29 @@ def get_item_file_directory(item):
     return file_directory
 
 
-# will save item(s) into respective files within the dictionary directory
-def save_items(items):
-    # this for loop is just in case an array is given. Functionality that might be provided in the future
-    try:
-        for i in items:
-            file = open(str(get_item_file_directory(i)), 'a')  # open the corresponding file
-            file.write(item_to_string(i))  # save the corresponding item string
-            file.close()  # close the file
-    except TypeError:
-        file = open(str(get_item_file_directory(items)), 'a')  # open the corresponding file
-        file.write(item_to_string(items))  # save the corresponding item string
-        file.close()  # close the file
+# will save item ALPHABETICALLY into respective files within the dictionary directory
+def save_item(item):
+    directory = get_item_file_directory(item)
+
+    all_lines = get_file_lines(directory)
+    all_lines.append(item_to_string(item))
+
+    lines = all_lines[1:]
+    lines.sort()
+
+    file = open(directory, 'w')     # open the corresponding file
+    file.write(all_lines[0].rstrip())        # write title line
+
+    # removes any random or bad lines and writes all the remaining lines
+    i = 0
+    while i < len(lines):
+        if lines[i].find('&') == -1 or lines[i].rstrip() == "":
+            lines.pop(i)
+        else:
+            file.write("\n" + lines[i].rstrip())
+            i += 1
+
+    file.close()  # close the file
 
 
 # saves all the lines of a target_file
@@ -977,7 +1018,7 @@ def add_edit_item_window(to_edit):
     txt_img = Entry(frm_add_edit_inner, highlightthickness=1, highlightbackground=accent_light)
     txt_img.grid(column=1, columnspan=2, row=3, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
-    add_edit_field(frm_add_edit_inner, 4)
+    add_edit_field(frm_add_edit_inner, 4, selected_item, to_edit)
 
     # will add the edit item's stuff into the entry boxes
     if to_edit:
@@ -987,9 +1028,9 @@ def add_edit_item_window(to_edit):
 
     # will set the initial value of the option menu to the correct item type
     if to_edit:
-        small_win.title("Edit")
         opm_type.configure(state="disabled")
         it = get_item_type(selected_item)
+        small_win.title("Edit " + it + " " + selected_item.get_name())
 
         if it == "Variable":
             item_type_to_add_or_edit.set("Variable")
@@ -1007,7 +1048,7 @@ def add_edit_item_window(to_edit):
             item_type_to_add_or_edit.set("Logic")
 
     else:
-        small_win.title("Add")
+        small_win.title("Add new item")
         item_type_to_add_or_edit.set("Logic")
 
     small_win.mainloop()
@@ -1016,7 +1057,7 @@ def add_edit_item_window(to_edit):
 # displays the correct input criteria for each of the item types
 def add_edit_item_option_display(type_to_display, container_widget, to_edit):
     # saves all the widgets after the first 8 which are always gonna be there
-    widgets = container_widget.winfo_children()[8:]
+    widgets = container_widget.winfo_children()[11:]
 
     # deletes those widgets to remove remnants
     for w in widgets:
@@ -1109,7 +1150,7 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
 
     # will add the edit item's stuff into the entry boxes
     if to_edit:
-        txt_equ.insert(0, equ_to_display.get_equation_normal())
+        txt_equ.insert(0, equ_to_display.get_expression())
 
     frm_equ_holder = Frame(container_widget)
     frm_equ_holder.grid(column=0, columnspan=3, row=start_row, sticky="n, s, e, w")
@@ -1304,7 +1345,7 @@ def delete_added_item(container_widget, button, type_to_delete, in_meth):
 
 
 # used to create a region for the user to add fields to their item
-def add_edit_field(container_widget, row):
+def add_edit_field(container_widget, row, item_to_display, to_edit):
     field_selected.set("Select a field tag")  # will set the initial value
 
     lab_field = Label(container_widget, text="Corresponding Fields:", highlightthickness=1,
@@ -1313,34 +1354,87 @@ def add_edit_field(container_widget, row):
     lst_field = Listbox(container_widget, selectmode="multiple")
     lst_field.grid(column=1, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
+    if to_edit and item_to_display.get_fields() != ():
+        for field in item_to_display.get_fields():
+            lst_field.insert("end", field)
+
+    height = lst_field.size()
+    if height == 0:
+        height = 1
+    lst_field.configure(height=height)
+
     # the *list_of_fields will break list_of_fields into individual pieces which will then be sent to OptionMenu
     opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
                            command=lambda e: add_edit_field_logic(e, lst_field, opm_field, container_widget, row))
     opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
 
+    return row + 1
+
 
 # will chose to either add item to field list or bring up a field creation window
 def add_edit_field_logic(choice, lst, opm, container_widget, row):
-    if choice != "-New Field-":
-        lst.insert("end", choice)
+    already_in_list = lst.get(0, "end")
+    no_repeat = True
 
-    else:
-        while True:     # will keep going until the user inputs acceptable values
-            field = simpledialog.askstring(title="New Field", prompt="Enter new field name").rstrip()
+    for f in already_in_list:
+        if choice == f:
+            alert_user("This field is already in the list.", False)
+            no_repeat = False
+            break
 
-            if ',' in field or '&' in field or '§' in field:
-                alert_user("You have entered either a coma, '&', or '§' somewhere in the name of the new field. "
-                           "None of these characters are allowed, please try again.", False)
-            else:
-                list_of_fields.append(field)
-                lst.insert("end", field)
+    if no_repeat:
+        if choice != "-New Field-":
+            lst.insert("end", choice)
 
-                # gotta destroy and make a new optionmenu cause you can't really update what is in the menu
-                opm.destroy()
-                opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
-                                       command=lambda e: add_edit_field_logic(e, lst, opm_field, container_widget, row))
-                opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
-                break
+        else:
+            while True:     # will keep going until the user inputs acceptable values
+                # in case the user cancels the input window which would then return NoneType
+                try:
+                    field = simpledialog.askstring(title="New Field", prompt="Enter new field name").rstrip()
+
+                except AttributeError:  # if the user cancels it wont do anything
+                    break
+
+                # used to re-grab the toplevel with the editing stuff so that things to mess up
+                lst.master.master.master.master.grab_set()
+
+                not_in_master_list = True
+
+                if field != "":
+                    # will look through fields archive to ensure new field is not already in there
+                    for f in list_of_fields:
+                        if field == f or field == "":
+                            alert_user("This field already exists in the data base. It will not be re-added.", False)
+                            not_in_master_list = False
+                            break
+
+                    # when the field isn't alread in there
+                    if not_in_master_list:
+                        if ',' in field or '&' in field or '§' in field:
+                            alert_user("You have entered a coma, '&', or '§' somewhere in the name of the new field.\n"
+                                       "None of these characters are allowed, please try again.", False)
+                        else:
+                            list_of_fields.append(field)
+                            lst.insert("end", field)
+
+                            # gotta destroy and make a new optionmenu cause you can't really update what is in the menu
+                            opm.destroy()
+                            opm_field = OptionMenu(container_widget, field_selected, *list_of_fields, "-New Field-",
+                                                   command=lambda e: add_edit_field_logic(e, lst, opm_field,
+                                                                                          container_widget, row))
+                            opm_field.grid(column=2, row=row, sticky="n, s, e, w", padx=spacing_in, pady=spacing_in)
+                            break
+
+                    else:   # when there is already a field in the data base the loop will stop
+                        break
+
+                else:   # when the user enters nothing
+                    alert_user("You have not entered anything. Please enter a word.", False)
+
+        height = lst.size()
+        if height == 0:
+            height = 1
+        lst.configure(height=height)
 
 
 # will add or edit the item the user has given
@@ -1392,7 +1486,6 @@ def item_submit(container_widget, to_edit, top_level_window):
     else:
         # will start the save logic corresponding to what the user wants to save
         if item_type_selected == "Logic":
-            outer_list_of_txt_input.append("")  # since image stuff hasn't been implemented
             item_to_save = item_submit_log_var_const(outer_list_of_txt_input, fields_selected)
 
         elif item_type_selected == "Variable":
@@ -1409,7 +1502,7 @@ def item_submit(container_widget, to_edit, top_level_window):
             last_child = LabelFrame()
             list_of_steps = []
             list_of_frames = []
-            i_entry = 2
+            i_entry = 3
             i_frame = 0
 
             # get all frames in the list_of_widgets. Used only for equations
@@ -1435,7 +1528,7 @@ def item_submit(container_widget, to_edit, top_level_window):
 
                     elif check_text == "Logic":
                         # logic_text is stop gap until logic images are implemented
-                        logic_text = outer_list_of_txt_input[i_entry:i_entry + 2]
+                        logic_text = outer_list_of_txt_input[i_entry:i_entry + 3]
 
                         list_of_steps.append(item_submit_log_var_const(logic_text, fields_selected))
                         i_entry += 2
@@ -1462,7 +1555,7 @@ def item_submit(container_widget, to_edit, top_level_window):
             if to_edit:
                 move_item_to_trash(selected_item)
 
-            save_items(item_to_save)
+            save_item(item_to_save)
             save_list_of_fields()       # done now so that if previous addition was canceled it would not be saved
             top_level_window.destroy()  # close the toplevel window so the user can go back to what they where doing
 
@@ -1491,7 +1584,7 @@ def item_submit_equ(outer_text_list, fields, equ_frame_children):
         elif item.winfo_class() == "Text":
             equ_frame_txt_box_text.append(item.get(1.0, "end").rstrip())
 
-    equ_last_frame_child = LabelFrame()
+    equ_last_frame_child = Radiobutton()
     list_of_variables = []
     i_entry = 0
 
@@ -1503,7 +1596,7 @@ def item_submit_equ(outer_text_list, fields, equ_frame_children):
                 list_of_variables.append(item_submit_log_var_const(text_list, fields))
                 i_entry += 4
 
-            elif child.cget("text") == "Constant:":
+            elif equ_last_frame_child.cget("text") == "Constant:":
                 text_list = equ_frame_txt_box_text[i_entry:i_entry + 5]
                 text_list.insert(2, None)
                 list_of_variables.append(item_submit_log_var_const(text_list, fields))
@@ -1532,9 +1625,9 @@ def move_item_to_trash(item):
     start_file = open(selected_item_save_location, 'w')
 
     # look at each line to determine if there is a match
-    for line in selected_item_file_lines:
-        if line.strip("\n") != selected_item_as_string.strip("\n"):     # when there isn't a match write the line
-            start_file.write(line)
+    for ln in selected_item_file_lines:
+        if ln.strip("\n") != selected_item_as_string.strip("\n"):     # when there isn't a match write the line
+            start_file.write(ln)
 
     start_file.close()    # close the file
 
@@ -1549,8 +1642,6 @@ def move_item_to_trash(item):
 
 # looks to see if there is a repeat of the given item. (True = Repeat, False = NO repeat)
 def check_for_repeats(item):
-    file_existence_filter(get_item_file_directory(item))
-
     is_there_a_repeat = False
 
     # save necessary info about selected_item
@@ -1562,8 +1653,8 @@ def check_for_repeats(item):
     file = open(save_location, 'r')
 
     # look at each line to determine if there is a match
-    for line in save_file_lines:
-        if line.strip("\n") == item_as_string.strip("\n"):  # when the line matches the item
+    for fi_l in save_file_lines:
+        if fi_l.strip("\n") == item_as_string.strip("\n"):  # when the line matches the item
             is_there_a_repeat = True
 
     file.close()  # close the file
@@ -1573,11 +1664,20 @@ def check_for_repeats(item):
 
 # is used to archive any user added fields
 def save_list_of_fields():
+    global list_of_fields
     saved_fields_file = open("Dictionary/saved_fields.txt", 'w')
     saved_fields_file.write("_=^=_& Stores all fields so user can select them")
 
-    for field in list_of_fields:
-        saved_fields_file.write(field)
+    list_of_fields.sort()
+
+    # removes any random or bad lines and writes all the remaining lines
+    i = 0
+    while i < len(list_of_fields):
+        if list_of_fields[i].rstrip() == "":
+            list_of_fields.pop(i)
+        else:
+            saved_fields_file.write("\n" + list_of_fields[i].rstrip())
+            i += 1
 
     saved_fields_file.close()
 
@@ -1589,7 +1689,10 @@ def save_list_of_fields():
 
 list_of_fields = get_file_lines("Dictionary/saved_fields.txt")  # get all the saved fields and put them into a list
 list_of_fields.pop(0)   # removes the first item since that is just a title line explaining the file
-list_of_fields = list(map(str.rstrip, list_of_fields))  # will remove all \n from each item
+
+fe = 0
+for fe in range(0, len(list_of_fields)):
+    list_of_fields[fe] = list_of_fields[fe].rstrip()
 
 
 # ---------------------------big title label---------------------------
@@ -1771,6 +1874,9 @@ frm_info_inner.grid_columnconfigure(2, weight=1)
 
 
 frm_info_scroll_wrapper.grid(column=0, row=0, sticky="n, s, e, w")
+
+
+selected_item = Method("", "", "", "", [""])
 
 
 # ---------------------------keeping the window open and some widget sizing stuff---------------------------
