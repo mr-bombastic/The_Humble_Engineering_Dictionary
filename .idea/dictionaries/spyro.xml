@@ -2,6 +2,7 @@
   <dictionary name="spyro">
     <words>
       <w>matplotlib</w>
+      <w>toplevel</w>
     </words>
   </dictionary>
 </component>

@@ -1,1 +1,2 @@
 _=^=_& name & description & image name & list of accompanying steps
+n&d&No image association&&type:Logic&&&No image association&&end:Method

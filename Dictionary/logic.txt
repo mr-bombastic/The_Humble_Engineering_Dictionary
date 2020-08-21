@@ -1,1 +1,2 @@
 _=^=_& name & description & image name
+name&descr&No image association&
