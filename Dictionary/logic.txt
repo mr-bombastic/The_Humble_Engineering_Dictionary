@@ -1,2 +1,1 @@
-_=^=_& name & description & image name
-name&descr&No image association&
+_=^=_& name & description & image name & fields

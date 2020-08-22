@@ -110,6 +110,12 @@ search_field = IntVar(value=1)
 item_type_to_add_or_edit = StringVar()  # this is for adding/editing items. Let it be
 
 
+# used to allow text widgets to highlight the next item when the user hits tab
+def focus_next_window(event):
+    event.widget.tk_focusNext().focus()
+    return "break"
+
+
 # used to alert the user of their actions and asks them if they want to continue or not
 def alert_user(display_string, get_input):
     if get_input:
@@ -126,11 +132,13 @@ def print_all():
 
 # Will search though the database and fill the array to ultimately have it printed
 def search():
-    if txt_search.get() != '':
+    search_query = txt_search.get().strip()
+
+    if search_query != '':
 
         start_search_results()
 
-        search_in_list(txt_search.get().lower(), search_results)
+        search_in_list(search_query.lower(), search_results, True)
 
         # check to see if there are any results
         if search_results:
@@ -157,7 +165,7 @@ def start_search_results():
 
 
 # will use the given text to search through the search_results list and will weed out anything that doesn't match
-def search_in_list(search_text, list_to_search):
+def search_in_list(search_text, list_to_search, delete_stuff):
     i = 0
     while i < len(list_to_search):
         remove = 0
@@ -216,7 +224,7 @@ def search_in_list(search_text, list_to_search):
         elif get_item_type(list_to_search[i]) == "Equation":
 
             # get the list of variables/constants and search though them and save the result
-            equ_search_list = search_in_list(search_text, list_to_search[i].get_all_variables())
+            equ_search_list = search_in_list(search_text, list_to_search[i].get_all_variables(), False)
 
             # if there is nothing in the resulting list then nothing relevant was found
             if len(equ_search_list) == 0:
@@ -227,7 +235,7 @@ def search_in_list(search_text, list_to_search):
         elif get_item_type(list_to_search[i]) == "Method":
 
             # get the list of steps and search though them and save the result
-            equ_search_list = search_in_list(search_text, list_to_search[i].get_steps())
+            equ_search_list = search_in_list(search_text, list_to_search[i].get_steps(), False)
 
             # if there is nothing in the resulting list then nothing relevant was found
             if len(equ_search_list) == 0:
@@ -235,7 +243,7 @@ def search_in_list(search_text, list_to_search):
             remove_value += 1  # incremented to understand the number of parameters that will be considered
 
         # checks to see if a search result should be removed
-        if remove == remove_value:  # if the item has no relevance to the searched text and limiters
+        if remove == remove_value and delete_stuff:  # if the item has no relevance to the searched text and limiters
             del list_to_search[i]
         else:  # if it should stay
             i += 1
@@ -393,7 +401,7 @@ def print_results():
 
             # this is purely so that when user clicks on line the whole row will be highlighted and won't get cut off
             radb_spacer = Radiobutton(frm_results_inner, activebackground=color_mid, activeforeground=text_color,
-                                     borderwidth=0, selectcolor=color_mid, indicatoron=False, width=20)
+                                      borderwidth=0, selectcolor=color_mid, indicatoron=False, width=20)
             radb_spacer.bind("<Button-1>", callback_get_widget_row)
             radb_spacer.grid(sticky="nsew", row=r, column=4)
 
@@ -404,7 +412,6 @@ def print_results():
                       font=("TkDefaultFont", font_size + 2, "bold"))\
                     .grid(sticky="nsew", row=r, column=0, columnspan=4)
                 r += 1
-
 
 
 # will display a selected item's info in the display area
@@ -419,19 +426,20 @@ def display_info(result_row):
 
     # Name of the item
     msg_name = Message(frm_info_inner, text=str(selected_item.get_name()), bg=color_light, anchor='center',
-                       width=m_len*30, font=("TkDefaultFont", font_size + 10, "bold"))
+                       width=m_len*33, font=("TkDefaultFont", font_size + 10, "bold"))
     msg_name.bind("<Button-1>", lambda e: copy_to_clipboard(selected_item.get_name(), msg_name))
-    msg_name.grid(row=0, rowspan=2, column=0, columnspan=5, padx=spacing_out_y, pady=spacing_out_y, sticky="n, s, w, e")
+    msg_name.grid(row=0, rowspan=2, column=0, columnspan=5, sticky="nsew")
 
     # Button to edit item
     Button(frm_info_inner, text="Edit Item", command=lambda: add_edit_item_window(True),
-           activeforeground=text_color).grid(row=0, column=5, padx=spacing_out_y, pady=spacing_out_y, sticky="e")
+           activeforeground=text_color).grid(row=0, column=5, sticky="se")
 
-    Label(frm_info_inner, text=get_item_type(selected_item)).grid(padx=spacing_out_x * 2, sticky="e", row=1, column=5)
+    Label(frm_info_inner, text=get_item_type(selected_item)).grid(sticky="ne", row=1, column=5)
 
-    display_info_logic(selected_item, 2, frm_info_inner, False)
+    display_info_logic(selected_item, 2, frm_info_inner, "none")
 
 
+# re-occuring logic used to print the rest of the selected item
 def display_info_logic(item, print_row, frm, print_name):
     item_type = get_item_type(item)  # get the type of item being displayed
 
@@ -452,12 +460,14 @@ def display_info_logic(item, print_row, frm, print_name):
 
     # decides how to write the name, if it is false it will not write any name
     if print_name == "equ":     # write name for a variable in an equation
-        Label(frm_item_holder, text=str(item.get_name()), font=("TkDefaultFont", font_size + 3, "underline")) \
+        Message(frm_item_holder, text=check_str_len(item.get_name(), 35), width=m_len*37, anchor='w',
+                font=("TkDefaultFont", font_size + 3, "underline"))\
             .grid(row=print_row, column=0, columnspan=6, sticky="nsew")
         print_row += 1
-    elif print_name:            # write name for a variable in a method
-        Label(frm_item_holder, text="Step " + str(print_name + 1) + ": " + item.get_name(),
-              font=("TkDefaultFont", font_size + 6, "bold", "italic", "underline")) \
+
+    elif isinstance(print_name, int):                       # write name for an item in a method
+        Message(frm_item_holder, text="Step " + str(print_name + 1) + ": " + item.get_name(),
+                font=("TkDefaultFont", font_size + 6, "bold", "italic", "underline"), width=m_len*37, anchor='w')\
             .grid(row=print_row, column=0, columnspan=6, sticky="nsew", pady=spacing_out_y)
         print_row += 1
 
@@ -473,18 +483,20 @@ def display_info_logic(item, print_row, frm, print_name):
 
     # display description info for items if there is something to display
     if item.get_description() != "":
-        txt_descr = Text(frm_item_holder, bg=color_light, width=35)
+        txt_descr = Text(frm_item_holder, bg=color_light)
         txt_descr.insert("insert", item.get_description())
 
-        num_of_lines = int(len(item.get_description())/35)+1
+        num_of_lines = int(len(item.get_description())/30)+1    # rough approximation that works for proper words
 
         txt_descr.configure(state="disabled", height=num_of_lines)
         txt_descr.grid(row=print_row, column=0, columnspan=6, sticky="nsew")
-
         print_row += 1
 
     # add info of other item types
-    if item_type == "Variable" or item_type == "Constant":
+    if item_type == "Logic":
+        print_row = display_info_log_fields(print_row, frm_item_holder, item)
+
+    elif item_type == "Variable" or item_type == "Constant":
         Label(frm_item_holder, text="Symbol:", font=("TkDefaultFont", font_size, "bold"))\
             .grid(row=print_row, column=0, sticky="e")
         create_latex_widget(item.get_symbol(), frm_item_holder, color_light, True).\
@@ -493,7 +505,7 @@ def display_info_logic(item, print_row, frm, print_name):
         if get_item_type(item) == "Constant":  # for a constant specifically
             Label(frm_item_holder, text="Value:", font=("TkDefaultFont", font_size, "bold"))\
                 .grid(row=print_row, column=2, sticky="e")
-            create_latex_widget(item.get_value(), frm_item_holder, color_light, True)\
+            create_latex_widget(check_str_len(item.get_value(), 25), frm_item_holder, color_light, True)\
                 .grid(row=print_row, column=3, sticky="nsew")
 
         Label(frm_item_holder, text="Units:", font=("TkDefaultFont", font_size, "bold"))\
@@ -503,10 +515,14 @@ def display_info_logic(item, print_row, frm, print_name):
 
         print_row += 1
 
+        print_row = display_info_log_fields(print_row, frm_item_holder, item)
+
     elif item_type == "Equation":
         create_latex_widget(item.get_expression(), frm_item_holder, color_light, True) \
             .grid(row=print_row, column=0, columnspan=6, pady=spacing_out_y)
         print_row += 1
+
+        print_row = display_info_log_fields(print_row, frm_item_holder, item)
 
         # header for list of variables/constants
         Label(frm_item_holder, text="Featured variables/constants:",
@@ -519,18 +535,25 @@ def display_info_logic(item, print_row, frm, print_name):
             print_row = display_info_logic(variable, print_row, frm_item_holder, "equ")
 
     elif item_type == "Method":
+        print_row = display_info_log_fields(print_row, frm_item_holder, item)
+
         # loops through each step and displays the steps information
         # this loop style is done so that the step NUMBER can be included in the naming
         for s in range(0, item.get_num_steps()):
             print_row = display_info_logic(item.get_step(s), print_row, frm_item_holder, s)
 
-    Label(frm_item_holder, text="Associated Fields for " + item.get_name(),
+    return print_row
+
+
+# has been separated from the display_info_logic because different items need their fields printed in different places
+def display_info_log_fields(print_row, container_widget, item):
+    Label(container_widget, text="Associated Fields for " + check_str_len(item.get_name(), 35), width=55,
           font=("TkDefaultFont", font_size, "italic", "underline")) \
         .grid(row=print_row, column=0, columnspan=6)
     print_row += 1
 
     field_list = item.get_fields()
-    lst_fields = Listbox(frm_item_holder, height=len(field_list))
+    lst_fields = Listbox(container_widget, height=len(field_list), width=10)
     lst_fields.bind('<Double-1>', lambda b: copy_to_clipboard(lst_fields.get("active"), False))
 
     # to indicate to user there is nothing to show
@@ -542,9 +565,15 @@ def display_info_logic(item, print_row, frm, print_name):
             lst_fields.insert("end", field)
 
     lst_fields.grid(row=print_row, column=0, columnspan=6, sticky="nsew")
-    print_row += 1
+    return print_row + 1
 
-    return print_row
+
+# will compare the length of the string to the maximum length given. If its longer it will chop the rest off
+def check_str_len(string, max_length):
+    if len(string) > max_length:
+        return string[:max_length] + "..."
+    else:
+        return string
 
 
 # returns a canvas with the desired image within it
@@ -560,7 +589,7 @@ def create_latex_widget(string, container_widget, widget_color, copy_item):
         is_there_latex = False
 
     if string != "" and is_there_latex:
-        latex_text = "$"+string+"$"   # reformat the text so it has the correct syntax
+        latex_text = "$"+string.replace("$", "\$")+"$"   # reformat the text so it has the correct syntax
         file_name = "Dictionary/all_latex_images/" + remove_bad_chars(string) + '.png'
 
         if not os.path.isfile(file_name):   # when a file hasn't already been created
@@ -652,7 +681,7 @@ def copy_to_clipboard(string, widget):
 
     # flash the widget if that is required
     if widget:
-        # this will use a different thread to do this task meaning the program will not freeze whilst the button is flashing
+        # use a different thread to do this task so the program will not freeze whilst the button is flashing
         Thread(target=lambda: flash_widget(widget)).start()
 
 
@@ -850,8 +879,10 @@ def string_to_item_conversion_logic(archived_line, item_type):
                             split_line[s] = ''
 
                 if split_line[i] == "type:Logic":
-                    for s in range(1, 5):  # loop through each piece that corresponds to logic
-                        inner_string += split_line[i + s] + '&'  # puts them all into one string
+
+                    inner_string = split_line[i + 1]
+                    for s in range(2, 5):  # loop through each piece that corresponds to logic
+                        inner_string += '&' + split_line[i + s]  # puts them all into one string
 
                     # pass the string to convert it into a logic
                     list_of_steps.append(string_to_item(inner_string, "Logic"))
@@ -896,15 +927,15 @@ def save_item(item):
     lines.sort()
 
     file = open(directory, 'w')     # open the corresponding file
-    file.write(all_lines[0].rstrip())        # write title line
+    file.write(all_lines[0].strip())        # write title line
 
     # removes any random or bad lines and writes all the remaining lines
     i = 0
     while i < len(lines):
-        if lines[i].find('&') == -1 or lines[i].rstrip() == "":
+        if lines[i].find('&') == -1 or lines[i].strip() == "":
             lines.pop(i)
         else:
-            file.write("\n" + lines[i].rstrip())
+            file.write("\n" + lines[i].strip())
             i += 1
 
     file.close()  # close the file
@@ -930,15 +961,15 @@ def file_existence_filter(target_file):
         file = open(target_file, 'w')  # open file
 
         if target_file == "Dictionary/logic.txt":  # when writing info for a logic
-            file.write("_=^=_& name & description & image name")
+            file.write("_=^=_& name & description & image name & fields")
         elif target_file == "Dictionary/variables.txt":  # when writing info for a variable
-            file.write("_=^=_& name & description & image name & symbol & units")
+            file.write("_=^=_& name & description & image name & fields & symbol & units")
         elif target_file == "Dictionary/constants.txt":  # when writing info for a constant
-            file.write("_=^=_& name & description & image name & symbol & value & units")
+            file.write("_=^=_& name & description & image name & fields & symbol & value & units")
         elif target_file == "Dictionary/equations.txt":  # when writing info for a equation
-            file.write("_=^=_& name & description & image name & expression & list of accompanying variables/constants")
+            file.write("_=^=_& name & description & image name & fields & expression & list of accompanying variables/constants")
         elif target_file == "Dictionary/methods.txt":  # when writing info for method
-            file.write("_=^=_& name & description & image name & list of accompanying steps")
+            file.write("_=^=_& name & description & image name & fields & list of accompanying steps")
         elif target_file == "Dictionary/saved_fields.txt":  # when writing info for method
             file.write("_=^=_& Stores all fields so user can select them")
         else:
@@ -986,7 +1017,7 @@ def add_edit_item_window(to_edit):
     frm_add_edit_scroll_wrapper.grid_columnconfigure(0, weight=1)
 
     # the canvas that will enable the possibility to scroll through the various search results
-    canv_add_edit = Canvas(frm_add_edit_scroll_wrapper, highlightbackground=color_mid, width=m_len*37)
+    canv_add_edit = Canvas(frm_add_edit_scroll_wrapper, highlightbackground=color_mid, width=m_len*37, height=m_len*30)
     # frame in which the results will be listed
     frm_add_edit_inner = Frame(canv_add_edit, bg=color_mid)
     # scroll bar that will can scroll through results shown in frm_results_inner on the canvas
@@ -1073,7 +1104,7 @@ def add_edit_item_option_display(type_to_display, container_widget, to_edit):
         opm_type.grid(column=1, columnspan=2, row=5, sticky="nsew")
 
         Button(container_widget, text="Add Step:",
-               command=lambda: add_edit_method_step_add(selected_item_to_add.get(), container_widget, to_edit, "")) \
+               command=lambda: add_edit_method_step_add(selected_item_to_add.get(), container_widget, False, "")) \
             .grid(column=0, row=5, sticky="nsew")
 
         # will automatically display all the steps affiliated with this method when in editing mode
@@ -1110,10 +1141,6 @@ def add_edit_item_v_or_c_display(type_to_display, container_widget, to_edit, e_i
     if to_edit:
         txt_sym.insert(0, e_item.get_symbol())
         txt_unit.insert(0, e_item.get_units())
-
-    # properly sizes the window
-    wid1 = container_widget.winfo_children()[0].master  # gets width of the frame
-    #set_widget_width(wid1.winfo_width() + scrl_bar_thickness + m_len*3.2, wid1.master.master)
 
     return r
 
@@ -1153,8 +1180,6 @@ def add_edit_item_equation_display(container_widget, to_edit, equ_to_display):
     btn_add_const = Button(frm_add_title_holder, text="Add Constant",
                            command=lambda: add_edit_item_equation_item_add("Constant", frm_equ_holder, False))
     btn_add_const.grid(column=2, row=0, sticky="nsew")
-
-
 
     # will automatically display all the variables and constants affiliated with this equation when in editing mode
     if to_edit:
@@ -1293,6 +1318,7 @@ def add_edit_universal_components(container_widget, print_row, item_to_display, 
 
     Label(container_widget, text="Description:").grid(column=0, row=print_row, sticky="nsew")
     txt_def = Text(container_widget, highlightthickness=1)
+    txt_def.bind("<Tab>", focus_next_window)
     txt_def.grid(column=1, columnspan=2, row=print_row, sticky="nsew", padx=spacing_in, pady=spacing_in)
     print_row += 1
 
@@ -1356,7 +1382,7 @@ def add_edit_field_logic(choice, lst, opm, container_widget, row, field_selected
             while True:     # will keep going until the user inputs acceptable values
                 # in case the user cancels the input window which would then return NoneType
                 try:
-                    field = simpledialog.askstring(title="New Field", prompt="Enter new field name").rstrip()
+                    field = simpledialog.askstring(title="New Field", prompt="Enter new field name").strip()
 
                 except AttributeError:  # if the user cancels it wont do anything
                     break
@@ -1416,21 +1442,21 @@ def item_submit(container_widget, to_edit, top_level_window):
     # collect all the text boxes into a list
     for item in list_of_widgets:
         if item.winfo_class() == "Entry":
-            full_list_of_txt_input.append(item.get().rstrip())
+            full_list_of_txt_input.append(item.get().strip())
 
         elif item.winfo_class() == "Text":
-            full_list_of_txt_input.append(item.get(1.0, "end").rstrip())
+            full_list_of_txt_input.append(item.get(1.0, "end").strip())
 
         elif item.winfo_class() == "Listbox":
             fields_selected = item.get(0, "end")
 
-        elif item.winfo_class() == "Frame":
+        elif item.winfo_class() == "Frame" or item.winfo_class() == "LabelFrame":
             for frm_child in item.winfo_children():
                 if frm_child.winfo_class() == "Entry":
-                    full_list_of_txt_input.append(frm_child.get().rstrip())
+                    full_list_of_txt_input.append(frm_child.get().strip())
 
                 elif frm_child.winfo_class() == "Text":
-                    full_list_of_txt_input.append(frm_child.get(1.0, "end").rstrip())
+                    full_list_of_txt_input.append(frm_child.get(1.0, "end").strip())
 
     is_special_char_present = False
 
@@ -1439,8 +1465,7 @@ def item_submit(container_widget, to_edit, top_level_window):
             is_special_char_present = True
 
     if full_list_of_txt_input[0] == '':     # if no name has been given to the item
-        alert_user("You have not filled out all the fields for this item. Please enter something into every text box",
-                   False)
+        alert_user("You have not given this item a name. Please correct this", False)
     elif is_special_char_present:
         alert_user("In one of the fields you have used either the character '&' or '§'. These are not allowed. "
                    "Please change them.", False)
@@ -1490,16 +1515,14 @@ def item_submit_logic(list_of_txt_input, widget_list, fields_selected, item_type
             # will look through equ frame to decide what variable has been added
             if equ_last_frame_child.winfo_class() == "Label" and child.winfo_class() == "Button":
                 if equ_last_frame_child.cget("text") == "Variable:":
-                    text_list = index_txt_input[index_txt_input:index_txt_input + 4]
-                    text_list.insert(2, "No image association")   # this is cause variables in equ are not given images
+                    text_list = list_of_txt_input[index_txt_input:index_txt_input + 5]
                     list_of_var_const.append(item_submit_logic(text_list, widget_list, fields_selected, "Variable"))
-                    index_txt_input += 4
+                    index_txt_input += 5
 
                 elif equ_last_frame_child.cget("text") == "Constant:":
-                    text_list = index_txt_input[index_txt_input:index_txt_input + 5]
-                    text_list.insert(2, "No image association")   # this is cause constants in equ are not given images
+                    text_list = list_of_txt_input[index_txt_input:index_txt_input + 6]
                     list_of_var_const.append(item_submit_logic(text_list, widget_list, fields_selected, "Constant"))
-                    index_txt_input += 5
+                    index_txt_input += 6
 
             equ_last_frame_child = child
 
@@ -1520,12 +1543,12 @@ def item_submit_logic(list_of_txt_input, widget_list, fields_selected, item_type
                 if check_text == "Variable":
                     list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 5],
                                                            widget_list, fields_selected, "Variable"))
-                    index_txt_input += 4
+                    index_txt_input += 5
 
                 elif check_text == "Constant":
                     list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 6],
                                                            widget_list, fields_selected, "Constant"))
-                    index_txt_input += 5
+                    index_txt_input += 6
 
                 elif check_text == "Logic":
                     list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 3],
@@ -1533,9 +1556,36 @@ def item_submit_logic(list_of_txt_input, widget_list, fields_selected, item_type
                     index_txt_input += 3
 
                 elif check_text == "Equation":
-                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:index_txt_input + 3],
-                                                           widget_list, fields_selected, "Equation"))
-                    index_txt_input += 3
+
+                    # need to figure out when the equation ends so that the correct increment can be added
+                    # maybe could see how many label and button combinations there are and can then go based off that
+
+                    equ_last_frame_child = Radiobutton()
+                    amount_to_increment = 0  # this is to record how many individual components there are for equ
+
+                    # saves the frame that holds the variables and constant stuff
+                    frm_for_equ_v_c = []
+                    for widget in widget_list:
+                        if widget.winfo_class() == "Frame":
+                            frm_for_equ_v_c.append(widget)
+                            frm_for_equ_v_c.append(widget_list[0])      # done so that in equ part it can do loop
+                            break
+
+                    # will look through equ frame to decide what items have been added
+                    for c in frm_for_equ_v_c[0].winfo_children():
+                        if equ_last_frame_child.winfo_class() == "Label" and c.winfo_class() == "Button":
+                            if equ_last_frame_child.cget("text") == "Variable:":
+                                amount_to_increment += 5
+
+                            elif equ_last_frame_child.cget("text") == "Constant:":
+                                amount_to_increment += 6
+
+                        equ_last_frame_child = c
+
+                    list_of_steps.append(item_submit_logic(list_of_txt_input[index_txt_input:
+                                                                             index_txt_input + amount_to_increment + 4],
+                                                           frm_for_equ_v_c, fields_selected, "Equation"))
+                    index_txt_input += amount_to_increment + 4
 
                     # will remove the most recent frame so that future equations will not be confused
                     w = 0
@@ -1570,7 +1620,7 @@ def move_item_to_trash(item):
 
     # look at each line to determine if there is a match
     for ln in selected_item_file_lines:
-        if ln.rstrip() != selected_item_as_string.rstrip():     # when there isn't a match write the line
+        if ln.strip() != selected_item_as_string.strip():     # when there isn't a match write the line
             start_file.write(ln)
 
     start_file.close()    # close the file
@@ -1617,10 +1667,10 @@ def save_list_of_fields():
     # removes any random or bad lines and writes all the remaining lines
     i = 0
     while i < len(list_of_fields):
-        if list_of_fields[i].rstrip() == "":
+        if list_of_fields[i].strip() == "":
             list_of_fields.pop(i)
         else:
-            saved_fields_file.write("\n" + list_of_fields[i].rstrip())
+            saved_fields_file.write("\n" + list_of_fields[i].strip())
             i += 1
 
     saved_fields_file.close()
@@ -1636,7 +1686,7 @@ list_of_fields.pop(0)   # removes the first item since that is just a title line
 
 fe = 0
 for fe in range(0, len(list_of_fields)):
-    list_of_fields[fe] = list_of_fields[fe].rstrip()
+    list_of_fields[fe] = list_of_fields[fe].strip()
 
 
 # ---------------------------big title label---------------------------
@@ -1796,7 +1846,7 @@ frm_info_inner = Frame(canv_info, highlightthickness=0)
 # scroll bar that will can scroll through the info shown in frm_info_inner on the canvas
 srlb_info = Scrollbar(frm_info_scroll_wrapper, orient="vertical", command=canv_info.yview)
 # configures the canvas to include a scrolling command linked to the scrollbar
-canv_info.configure(yscrollcommand=srlb_info.set, width=m_len * 35)
+canv_info.configure(yscrollcommand=srlb_info.set, width=m_len * 41)
 
 # display in everything for the search results. They won't show up because frm_info_scroll_wrapper is not displayed yet
 canv_info.grid(column=0, row=0, sticky="nsew")

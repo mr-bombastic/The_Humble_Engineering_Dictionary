@@ -1,3 +1,2 @@
-_=^=_& name & description & image name & symbol & units
+_=^=_& name & description & image name & fields & symbol & units
 Stress&The amount of force exerted onto a particular area.&No image association&General,Materials&§sigma&Pa
-var&&No image association&&E&

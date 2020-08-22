@@ -3,5 +3,4 @@ Fluid Mechanics
 General
 Materials
 Thermodynamics
-a very long field so that we can see what fields will look like if very long
-f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f f
+CAD
